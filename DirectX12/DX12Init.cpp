@@ -58,6 +58,10 @@ DX12Init::DX12Init(HWND hwnd)
 		(IDXGISwapChain1**)(swapChain.GetAddressOf()));
 
 	int reanderNum = swapChainDesc.BufferCount;
+
+	result = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(fence.GetAddressOf()));
+	fenceEvent = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+
 }
 
 
@@ -81,8 +85,20 @@ DX12Init::ResourceBarrier(std::vector<ID3D12Resource*> recource, D3D12_RESOURCE_
 	_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(recource[swapChain->GetCurrentBackBufferIndex()], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 	return S_OK;
 }
+
+UINT64 frames_ = 0;
 HRESULT 
 DX12Init::Wait() {
+
+	const UINT64 fenceValue = frames_;
+	result = _commandQueue->Signal(fence.Get(), frames_);
+	++frames_;
+
+	while (fence->GetCompletedValue() < fenceValue) {
+		result = fence->SetEventOnCompletion(fenceValue, fenceEvent);
+	}
+
+
 	return S_OK;
 }
 

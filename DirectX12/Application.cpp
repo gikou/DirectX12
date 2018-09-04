@@ -289,10 +289,7 @@ Application::Run(HWND hwnd) {
 	dx12->GetQueue()->ExecuteCommandLists(_countof(commandList), commandList);
 
 
-	dx12->GetQueue()->Signal(fence, ++fenceValue);
-	while (fence->GetCompletedValue() != fenceValue) {
-		//待機
-	}
+	dx12->Wait();
 
 	//シェーダーの読み込み
 	ID3DBlob* vertexShader = nullptr;//頂点シェーダー
@@ -447,10 +444,7 @@ Application::Run(HWND hwnd) {
 		dx12->GetQueue()->ExecuteCommandLists(_countof(commandList), commandList);
 
 
-		dx12->GetQueue()->Signal(fence, ++fenceValue);
-		while (fence->GetCompletedValue() != fenceValue) {
-			//待機
-		}
+		dx12->Wait();
 		dx12->GetAllocator()->Reset();
 		dx12->GetList()->Reset(dx12->GetAllocator(), piplineState);
 
