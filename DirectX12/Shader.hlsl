@@ -15,7 +15,7 @@ struct Out
 	float3 normal : NORMAL;
 };
 
-Out BasicVS(float3 pos : POSITION, float2 uv : TEXCOORD, float3 normal : NORMAL)
+Out BasicVS(float3 pos : POSITION/*, float2 uv : TEXCOORD*/, float3 normal : NORMAL)
 {
 	Out o;
 	float4 position = float4(pos, 1);
@@ -23,15 +23,15 @@ Out BasicVS(float3 pos : POSITION, float2 uv : TEXCOORD, float3 normal : NORMAL)
 	o.svpos = position;
 	o.pos = position;
 	//o.uv = uv;
-	o.normal =mul(world,normal);
+	o.normal = mul(world,normal);
 	return o;
 }
 
 float4 BasicPS(Out o) : SV_TARGET
 {
 	//return float4(tex.Sample(smp, o.uv).abg, 1);
-	float3 light = normalize(float3(-1,1,-1));//光源へのベクトル(平行光源) 
-	float brightness = dot(o.normal, light);//内積とります 
+	float3 light = normalize(float3(-1,1,-1));
+	float brightness = dot(o.normal, light); 
 	return float4(brightness, brightness, brightness,1);
 	//return float4(1,1,1,1);
 }

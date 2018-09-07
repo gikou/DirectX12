@@ -8,6 +8,7 @@
 #include <tchar.h>
 #include <vector>
 #include <memory>
+#include <iostream>
 
 #include"DX12Init.h"
 
@@ -47,9 +48,6 @@ struct BaseMatrixes {
 
 #define WIN_WIDTH	(640)	//ウィンドウサイズ幅
 #define WIN_HEIGTH	(480)	//ウィンドウサイズ高
-
-#define Release(X)	{if((X) != nullptr) (X)->Release();}
-
 Application::Application()
 {
 }
@@ -90,8 +88,7 @@ Application::Run(HWND hwnd) {
 	if (FAILED(result))
 		int i = 0;
 	debug->EnableDebugLayer();
-	Release(debug);
-	debug = nullptr;
+	debug->Release();
 #endif
 
 
@@ -176,14 +173,16 @@ Application::Run(HWND hwnd) {
 	PMDHeader header = {};
 	FILE* modelLoad = nullptr;
 	fopen_s(&modelLoad, "model/初音ミク.pmd", "rb");
+
 	fread(&header, sizeof(header), 1, modelLoad);
+
 	const unsigned int vertex_size = sizeof(PMDVertex);
 	std::vector<PMDVertex> vertices(header.verCount);
 	fread(&vertices[0], sizeof(PMDVertex), header.verCount, modelLoad);
 	unsigned int indexCount = 0;
 	fread(&indexCount, sizeof(indexCount), 1,modelLoad);
 	std::vector<unsigned short> indices(indexCount);
-	fread(&indices[0], indices.size()*sizeof(unsigned short), 1, modelLoad);
+	fread(&indices[0], indices.size() * sizeof(indices[0]), 1, modelLoad);
 
 	fclose(modelLoad);
 
@@ -203,7 +202,7 @@ Application::Run(HWND hwnd) {
 	D3D12_INPUT_ELEMENT_DESC input[] = {
 		//頂点
 		{"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
-		{"TEXCOORD",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+	/*	{"TEXCOORD",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},*/
 		{"NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 }
 	};
 	
@@ -225,6 +224,7 @@ Application::Run(HWND hwnd) {
 	char* pData = nullptr;
 	vertexBuffer->Map(0, nullptr, (void**)&pData);
 	memcpy(pData, &vertices[0], vsBufferSize);//頂点データをバッファにコピー
+	//std::copy((PMDVertex*)pData, &vertices[0], vsBufferSize);//頂点データをバッファにコピー
 	vertexBuffer->Unmap(0, nullptr);
 
 	//頂点バッファビューの作成
@@ -252,7 +252,7 @@ Application::Run(HWND hwnd) {
 	D3D12_RANGE indexRange = { 0,0 };
 	unsigned short* indexAdress = nullptr;
 	_indexBuffer->Map(0, 0, (void**)&indexAdress);
-	memcpy(indexAdress, &indices[0], indices.size()*sizeof(unsigned short));//頂点データをバッファにコピー
+	memcpy(indexAdress, &indices[0], indices.size()* sizeof(indices[0]));//頂点データをバッファにコピー
 	_indexBuffer->Unmap(0, nullptr);
 
 
@@ -284,6 +284,50 @@ Application::Run(HWND hwnd) {
 		nullptr,
 		IID_PPV_ARGS(textureBuffer.GetAddressOf())
 	);
+
+	D3D12_RESOURCE_DESC depthResDesc = {};
+	depthResDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	depthResDesc.Width = WIN_WIDTH;//画面に対して使うバッファなので画面幅 
+	depthResDesc.Height = WIN_HEIGTH;//画面に対して使うバッファなので画面高さ 
+	depthResDesc.DepthOrArraySize = 1;
+	depthResDesc.Format = DXGI_FORMAT_D32_FLOAT;//必須(大事)デプスですしおすし 
+	depthResDesc.SampleDesc.Count = 1;
+	depthResDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;//必須(大事) 
+
+	D3D12_HEAP_PROPERTIES depthHeapProp = {};
+	depthHeapProp.Type = D3D12_HEAP_TYPE::D3D12_HEAP_TYPE_DEFAULT;//デフォルトでよい 
+	depthHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;//別に知らなくてもOK 
+	depthHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;//別に知らなくてもOK 
+
+																   //このクリアバリューが重要な意味を持つので今回は作っておく 
+	D3D12_CLEAR_VALUE _depthClearValue = {};
+	_depthClearValue.DepthStencil.Depth = 1.0f;//深さ最大値は１ 
+	_depthClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+
+	ComPtr<ID3D12Resource> _depthBuffer;
+	result = dx12->GetDevice()->CreateCommittedResource(&depthHeapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&depthResDesc,
+		D3D12_RESOURCE_STATE_DEPTH_WRITE, //デプス書き込みに使います 
+		&_depthClearValue,
+		IID_PPV_ARGS(_depthBuffer.GetAddressOf()));
+
+	D3D12_DESCRIPTOR_HEAP_DESC _dsvHeapDesc = {};//ぶっちゃけ特に設定の必要はないっぽい 
+	ID3D12DescriptorHeap* _dsvHeap = nullptr;
+	_dsvHeapDesc.NumDescriptors = 1;
+	_dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	_dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	result = dx12->GetDevice()->CreateDescriptorHeap(&_dsvHeapDesc, IID_PPV_ARGS(&_dsvHeap));
+
+	D3D12_CPU_DESCRIPTOR_HANDLE depthHandle = {};
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+
+	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	depthHandle = _dsvHeap->GetCPUDescriptorHandleForHeapStart();
+	dx12->GetDevice()->CreateDepthStencilView(_depthBuffer.Get(), &dsvDesc, depthHandle);
+
+	
 
 	//シェーダリソースビューの作成
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
@@ -344,15 +388,15 @@ Application::Run(HWND hwnd) {
 	);
 
 	//リソースバリア
-	dx12->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(textureBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+	//dx12->GetList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(textureBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
-	dx12->GetList()->Close();
+	/*dx12->GetList()->Close();
 
 	ID3D12CommandList* commandList[] = { dx12->GetList() };
 	dx12->GetQueue()->ExecuteCommandLists(_countof(commandList), commandList);
 
 
-	dx12->Wait();
+	dx12->Wait();*/
 
 	//シェーダーの読み込み
 	ID3DBlob* vertexShader = nullptr;//頂点シェーダー
@@ -367,8 +411,10 @@ Application::Run(HWND hwnd) {
 	//パイプラインステートオブジェクト(PSO)
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
 	gpsDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	gpsDesc.DepthStencilState.DepthEnable = false;
+	gpsDesc.DepthStencilState.DepthEnable = true;
 	gpsDesc.DepthStencilState.StencilEnable = false;
+	gpsDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	gpsDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 	gpsDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader);
 	gpsDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader);
 	gpsDesc.InputLayout.NumElements = _countof(input);
@@ -376,8 +422,9 @@ Application::Run(HWND hwnd) {
 	gpsDesc.pRootSignature = rootSignature;
 	gpsDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	gpsDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	gpsDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+	gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	gpsDesc.SampleDesc.Count = 1;
 	gpsDesc.NumRenderTargets = 1;
 	gpsDesc.SampleMask = UINT_MAX;
@@ -449,8 +496,10 @@ Application::Run(HWND hwnd) {
 	result = _constantBuffer.Get()->Map(0, &range, (void**)&matrixAddress);
 	*matrixAddress = matrix;
 
-	const float color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	const float color[] = { 1.0f, 0.0f, 0.0f, 1.0f };
 	unsigned int bbIndex = 0;
+	dx12->GetAllocator()->Reset();
+	dx12->GetList()->Reset(dx12->GetAllocator(), piplineState);
 	//ループ
 	MSG msg = {};
 	while (msg.message != WM_QUIT) {
@@ -474,7 +523,8 @@ Application::Run(HWND hwnd) {
 
 
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap.Get()->GetCPUDescriptorHandleForHeapStart(), bbIndex, descriptorSize);
-		dx12->GetList()->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
+		dx12->GetList()->OMSetRenderTargets(1, &rtvHandle, false, &_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+		dx12->GetList()->ClearDepthStencilView(_dsvHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0.0f, 0, nullptr);
 		dx12->GetList()->ClearRenderTargetView(rtvHandle, color, 0, nullptr);
 
 		dx12->GetList()->SetDescriptorHeaps(1, _cbvDescHeap.GetAddressOf());
@@ -486,25 +536,24 @@ Application::Run(HWND hwnd) {
 
 
 		//三角ポリゴン描画にする
-		dx12->GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		dx12->GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		//頂点バッファのセット
 		dx12->GetList()->IASetVertexBuffers(0, 1, &vbView);
 		dx12->GetList()->IASetIndexBuffer(&_indexBufferView);
 
-		//INdexがなぞ
 		//頂点描画
 		dx12->GetList()->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 
-		dx12->ResourceBarrier(renderTarget, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+		//dx12->ResourceBarrier(renderTarget, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
 
 		////リソースバリア
 		//_commandList->ResourceBarrier(1,&CD3DX12_RESOURCE_BARRIER::Transition(textureBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 		static float angle = 0.0f;
-		world = XMMatrixRotationY(angle);
+		matrix.world = XMMatrixRotationY(angle);
 		angle += 0.01;
-		matrixAddress->world = world;
+		*matrixAddress = matrix;
 
 		dx12->GetList()->Close();
 
@@ -524,4 +573,9 @@ Application::Run(HWND hwnd) {
 		bbIndex = dx12->GetSwap()->GetCurrentBackBufferIndex();
 	}
 	return true;
+}
+
+void 
+Application::Delete() {
+	
 }

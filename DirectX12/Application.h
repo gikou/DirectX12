@@ -14,5 +14,6 @@ public:
 		return instance;
 	}
 	bool Run(HWND hwnd);
+	void Delete();
 };
 

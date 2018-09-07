@@ -67,11 +67,20 @@ DX12Init::DX12Init(HWND hwnd)
 
 DX12Init::~DX12Init()
 {
-	swapChain.Get()->Release();
-	device.Get()->Release();
-	//_commandList.Get()->Release();
-	//_commandAllocator.Get()->Release();
-	//_commandQueue.Get()->Release();
+	swapChain.Reset();
+	device.Reset();
+	_commandList.Reset();
+	_commandAllocator.Reset();
+	_commandQueue.Reset();
+
+	factory.Reset();
+	fence.Reset();
+
+	_vertexBuffer.Reset();
+	root_sugnature_.Reset();
+
+	vertex_shader.Reset();
+	pixel_shader.Reset();
 }
 
 

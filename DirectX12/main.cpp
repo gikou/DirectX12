@@ -35,7 +35,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	if (!Application::Instance().Run(hwnd)) {
 		return 0;
 	}
-
+	Application::Instance().Delete();
 }
 
 //ウィンドウプロシージャ
