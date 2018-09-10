@@ -32,15 +32,11 @@ private:
 	ComPtr<ID3DBlob> vertex_shader{};
 	ComPtr<ID3DBlob> pixel_shader{};
 
-	HRESULT CreateFactory();
+	HRESULT CreateDevice();
 	HRESULT CreateCommand();
 	HRESULT CreateFence();
 	HRESULT CreateSwapChain();
-	HRESULT CreateDescriptor();
-	HRESULT CreateRenderTarget();
 
-	D3D12_VIEWPORT viewport_;
-	D3D12_RECT scissorRect;
 public:
 	DX12Init(HWND hwnd);
 	~DX12Init();

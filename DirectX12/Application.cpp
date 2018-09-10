@@ -10,41 +10,17 @@
 #include <memory>
 #include <iostream>
 
+
 #include"DX12Init.h"
+#include"Model.h"
+#include"DX12RootSignature.h"
+
+#include"Camera.h"
 
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 using namespace DirectX;
-////頂点構造体
-//struct Vertex {
-//	DirectX::XMFLOAT3 pos;//座標
-//	DirectX::XMFLOAT2 uv;//uv座標
-//};
-
-#pragma pack(1)
-struct PMDHeader {
-	char magic[3];
-	float version;
-	char name[20];
-	char comment[256];
-	unsigned int verCount;
-};
-
-struct PMDVertex{
-	XMFLOAT3 pos;
-	XMFLOAT3 normal;
-	XMFLOAT2 uv;
-	unsigned short boneNum[2];
-	unsigned char boneWeight;
-	unsigned char edge;
-};
-#pragma pack()
-
-struct BaseMatrixes {
-	XMMATRIX world;//ワールド 
-	XMMATRIX viewproj;//ビュープロジェ 
-};
 
 #define WIN_WIDTH	(640)	//ウィンドウサイズ幅
 #define WIN_HEIGTH	(480)	//ウィンドウサイズ高
@@ -56,24 +32,6 @@ Application::Application()
 Application::~Application()
 {
 }
-
-void SetRootSignature(std::vector<D3D12_DESCRIPTOR_RANGE>& range, std::vector<D3D12_ROOT_PARAMETER>& param, int registerNum, D3D12_DESCRIPTOR_RANGE_TYPE type, D3D12_SHADER_VISIBILITY visibility){
-	D3D12_DESCRIPTOR_RANGE _range = {};
-	_range.RangeType = type;
-	_range.NumDescriptors = 1;
-	_range.BaseShaderRegister = registerNum;
-	_range.RegisterSpace = 0;
-	_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-	range.push_back(_range);
-
-	D3D12_ROOT_PARAMETER _param = {};
-	_param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	_param.ShaderVisibility = visibility;
-	_param.DescriptorTable.NumDescriptorRanges = 1;
-	_param.DescriptorTable.pDescriptorRanges = &_range;
-	param.push_back(_param);
-}
-
 
 bool
 Application::Run(HWND hwnd) {
@@ -94,6 +52,7 @@ Application::Run(HWND hwnd) {
 
 	std::shared_ptr<DX12Init> dx12;
 	dx12.reset(new DX12Init(hwnd));
+	dx12->Initialize();
 
 	//ディスクリプタヒープの作成
 	D3D12_DESCRIPTOR_HEAP_DESC descriptor = {};
@@ -118,73 +77,18 @@ Application::Run(HWND hwnd) {
 		descriptorHandle.Offset(descriptorSize);//キャンバスとビューのぶん次のところまでオフセット
 	}
 
-	//サンプラの設定
-	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
-	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
-	samplerDesc.MinLOD = 0.0f;
-	samplerDesc.MipLODBias = 0.0f;
-	samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-	samplerDesc.ShaderRegister = 0;
-	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	samplerDesc.RegisterSpace = 0;
-	samplerDesc.MaxAnisotropy = 0;
-	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
 
-	//ディスクリプタレンジの設定
-	std::vector<D3D12_DESCRIPTOR_RANGE> dRange;
-	std::vector<D3D12_ROOT_PARAMETER> parameter;
+	std::shared_ptr<DX12RootSignature> rootSignature;
+	rootSignature.reset(new DX12RootSignature(dx12->GetDevice()));
 
-	SetRootSignature(dRange, parameter, 0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, D3D12_SHADER_VISIBILITY_PIXEL);
-	SetRootSignature(dRange, parameter, 0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV, D3D12_SHADER_VISIBILITY_ALL);
-	
+	rootSignature->SetRootSignature(0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootSignature->SetRootSignature(0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV, D3D12_SHADER_VISIBILITY_ALL);
 
-	//ルートシグネチャ
-	ID3D12RootSignature* rootSignature = nullptr;
-	ID3DBlob* signature = nullptr;
-	ID3DBlob* error = nullptr;
-	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
-	rsDesc.NumParameters = parameter.size();
-	rsDesc.NumStaticSamplers = 1;
-	rsDesc.pParameters = parameter.data();
-	rsDesc.pStaticSamplers = &samplerDesc;
-	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-	
-	for (int i = 0; i < parameter.size(); ++i) {
-		parameter[i].DescriptorTable.pDescriptorRanges = &dRange[i];
-	}
-	
-	result = D3D12SerializeRootSignature(
-		&rsDesc,
-		D3D_ROOT_SIGNATURE_VERSION_1,
-		&signature,
-		&error
-	);
-	result = dx12->GetDevice()->CreateRootSignature(
-		0,
-		signature->GetBufferPointer(),
-		signature->GetBufferSize(),
-		IID_PPV_ARGS(&rootSignature)
-	);
+	rootSignature->CreateRootSignature();
 
-	PMDHeader header = {};
-	FILE* modelLoad = nullptr;
-	fopen_s(&modelLoad, "model/初音ミク.pmd", "rb");
-
-	fread(&header, sizeof(header), 1, modelLoad);
-
-	const unsigned int vertex_size = sizeof(PMDVertex);
-	std::vector<PMDVertex> vertices(header.verCount);
-	fread(&vertices[0], sizeof(PMDVertex), header.verCount, modelLoad);
-	unsigned int indexCount = 0;
-	fread(&indexCount, sizeof(indexCount), 1,modelLoad);
-	std::vector<unsigned short> indices(indexCount);
-	fread(&indices[0], indices.size() * sizeof(indices[0]), 1, modelLoad);
-
-	fclose(modelLoad);
+	std::shared_ptr<Model> model;
+	model.reset(new Model(dx12->GetDevice(), dx12->GetList()));
+	model->ModelLoader("model/初音ミク.pmd");
 
 
 	//頂点情報の作成
@@ -207,56 +111,10 @@ Application::Run(HWND hwnd) {
 	};
 	
 	
-
-	unsigned int vsBufferSize = vertices.size() * sizeof(PMDVertex);
-
-	//頂点バッファの作成
-	ComPtr<ID3D12Resource> vertexBuffer;
-	result = dx12->GetDevice()->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),//CPUからGPUへ転送する用
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(vsBufferSize),//サイズ
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(vertexBuffer.GetAddressOf())
-	);
-	//バッファに対して書き込む
-	char* pData = nullptr;
-	vertexBuffer->Map(0, nullptr, (void**)&pData);
-	memcpy(pData, &vertices[0], vsBufferSize);//頂点データをバッファにコピー
-	//std::copy((PMDVertex*)pData, &vertices[0], vsBufferSize);//頂点データをバッファにコピー
-	vertexBuffer->Unmap(0, nullptr);
-
-	//頂点バッファビューの作成
-	D3D12_VERTEX_BUFFER_VIEW vbView = {};
-	vbView.BufferLocation = vertexBuffer.Get()->GetGPUVirtualAddress();//頂点アドレスのGPUにあるアドレスを記憶
-	vbView.StrideInBytes = sizeof(PMDVertex);//頂点1つあたりのバイト数を指定
-	vbView.SizeInBytes = vsBufferSize;//データ全体のサイズを指定
+	model->SetVertexAndIndex();
 
 
-	D3D12_INDEX_BUFFER_VIEW _indexBufferView = {};
-	ID3D12Resource* _indexBuffer = nullptr;
-	result = dx12->GetDevice()->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(indices.size() * sizeof(indices[0])),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&_indexBuffer)
-	);
-
-
-	_indexBufferView.BufferLocation = _indexBuffer->GetGPUVirtualAddress();
-	_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-	_indexBufferView.SizeInBytes = indices.size() * sizeof(indices[0]);
-
-	D3D12_RANGE indexRange = { 0,0 };
-	unsigned short* indexAdress = nullptr;
-	_indexBuffer->Map(0, 0, (void**)&indexAdress);
-	memcpy(indexAdress, &indices[0], indices.size()* sizeof(indices[0]));//頂点データをバッファにコピー
-	_indexBuffer->Unmap(0, nullptr);
-
-
-										  //テクスチャリソースの作成
+	//テクスチャリソースの作成
 	CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	D3D12_RESOURCE_DESC texResourceDesc = {};
 	texResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -326,8 +184,6 @@ Application::Run(HWND hwnd) {
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	depthHandle = _dsvHeap->GetCPUDescriptorHandleForHeapStart();
 	dx12->GetDevice()->CreateDepthStencilView(_depthBuffer.Get(), &dsvDesc, depthHandle);
-
-	
 
 	//シェーダリソースビューの作成
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
@@ -399,6 +255,7 @@ Application::Run(HWND hwnd) {
 	dx12->Wait();*/
 
 	//シェーダーの読み込み
+	ID3DBlob* error = nullptr;
 	ID3DBlob* vertexShader = nullptr;//頂点シェーダー
 	ID3DBlob* pixelShader = nullptr;//ピクセルシェーダー
 									//シェーダーのコンパイルを行う
@@ -419,7 +276,7 @@ Application::Run(HWND hwnd) {
 	gpsDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader);
 	gpsDesc.InputLayout.NumElements = _countof(input);
 	gpsDesc.InputLayout.pInputElementDescs = input;
-	gpsDesc.pRootSignature = rootSignature;
+	gpsDesc.pRootSignature = rootSignature->GetRootSignature();
 	gpsDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	gpsDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	gpsDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
@@ -440,66 +297,15 @@ Application::Run(HWND hwnd) {
 	viewPort.MinDepth = 0.0f;
 	viewPort.MaxDepth = 1.0f;
 
-	BaseMatrixes matrix = {};
-
-	XMMATRIX world = XMMatrixIdentity();
-	XMVECTOR eye = { 0,10,-30 };
-	XMVECTOR target = { 0,10,0 };
-	XMVECTOR upper = { 0,1,0 };
-
-
-	XMMATRIX camera = XMMatrixLookAtLH(eye, target, upper);
-	XMMATRIX projection = XMMatrixPerspectiveFovLH(XM_PIDIV4, static_cast<float>(WIN_WIDTH) / static_cast<float>(WIN_HEIGTH), 0.1f, 1000.0f);
-	matrix.world = world;
-	matrix.viewproj = camera * projection;
-
-	ComPtr<ID3D12Resource> _constantBuffer;
-	ComPtr<ID3D12DescriptorHeap> _cbvDescHeap;
-
-	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-	cbvHeapDesc.NumDescriptors = 1;
-	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;//シェーダから見えますように 
-	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;//コンスタントバッファです 
-	result = dx12->GetDevice()->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(_cbvDescHeap.GetAddressOf()));//いつもの 
-
-	D3D12_HEAP_PROPERTIES cbvHeapProperties = {};
-	cbvHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-	cbvHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-	cbvHeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	cbvHeapProperties.VisibleNodeMask = 1;
-	cbvHeapProperties.CreationNodeMask = 1;
-
-	D3D12_RESOURCE_DESC cbvResDesc = {};
-	cbvResDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;//単なる1次元バッファなので 
-	cbvResDesc.Width = (sizeof(BaseMatrixes) + 0xff)&~0xff;//256アラインメント 
-	cbvResDesc.Height = 1;//1次元なんで１でいい 
-	cbvResDesc.DepthOrArraySize = 1;//深さとかないんで 
-	cbvResDesc.MipLevels = 1;//ミップとかないんで 
-	cbvResDesc.SampleDesc.Count = 1;//これ1に意味ないと思うんだけど無いと失敗 
-	cbvResDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;//SWIZZLE とかしねーから。 
-
-	result = dx12->GetDevice()->CreateCommittedResource(
-		&cbvHeapProperties,
-		D3D12_HEAP_FLAG_NONE,
-		&cbvResDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(_constantBuffer.GetAddressOf()));
-
-	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-	cbvDesc.BufferLocation = _constantBuffer.Get()->GetGPUVirtualAddress();
-	cbvDesc.SizeInBytes = (sizeof(BaseMatrixes) + 0xff)&~0xff;//256アラインメント 
-	dx12->GetDevice()->CreateConstantBufferView(&cbvDesc, _cbvDescHeap.Get()->GetCPUDescriptorHandleForHeapStart());
-
-	D3D12_RANGE range = { 0,0 };
-	BaseMatrixes* matrixAddress = nullptr;
-	result = _constantBuffer.Get()->Map(0, &range, (void**)&matrixAddress);
-	*matrixAddress = matrix;
+	std::shared_ptr<Camera> camera;
+	camera.reset(new Camera(dx12->GetDevice()));
+	camera->CreateCamera();
 
 	const float color[] = { 1.0f, 0.0f, 0.0f, 1.0f };
 	unsigned int bbIndex = 0;
 	dx12->GetAllocator()->Reset();
 	dx12->GetList()->Reset(dx12->GetAllocator(), piplineState);
+
 	//ループ
 	MSG msg = {};
 	while (msg.message != WM_QUIT) {
@@ -508,7 +314,7 @@ Application::Run(HWND hwnd) {
 			DispatchMessage(&msg);	//処理されなかったメッセージをOSに返す
 		}
 		//ルートシグネチャのセット
-		dx12->GetList()->SetGraphicsRootSignature(rootSignature);
+		dx12->GetList()->SetGraphicsRootSignature(rootSignature->GetRootSignature());
 
 		//パイプラインのセット
 		dx12->GetList()->SetPipelineState(piplineState);
@@ -526,34 +332,17 @@ Application::Run(HWND hwnd) {
 		dx12->GetList()->OMSetRenderTargets(1, &rtvHandle, false, &_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 		dx12->GetList()->ClearDepthStencilView(_dsvHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0.0f, 0, nullptr);
 		dx12->GetList()->ClearRenderTargetView(rtvHandle, color, 0, nullptr);
-
-		dx12->GetList()->SetDescriptorHeaps(1, _cbvDescHeap.GetAddressOf());
-		dx12->GetList()->SetGraphicsRootDescriptorTable(1, _cbvDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+		ID3D12DescriptorHeap* cbv = camera->GetCBVHeapDesc();
+		dx12->GetList()->SetDescriptorHeaps(1, &cbv);
+		dx12->GetList()->SetGraphicsRootDescriptorTable(1, camera->GetCBVHeapDesc()->GetGPUDescriptorHandleForHeapStart());
 
 		//シェーダリソースビュー用のデスクリプタをセット
 		dx12->GetList()->SetDescriptorHeaps(1, (ID3D12DescriptorHeap* const*)texHeap.GetAddressOf());
 		dx12->GetList()->SetGraphicsRootDescriptorTable(0, texHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 
+		model->ModelDraw();
 
-		//三角ポリゴン描画にする
-		dx12->GetList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		//頂点バッファのセット
-		dx12->GetList()->IASetVertexBuffers(0, 1, &vbView);
-		dx12->GetList()->IASetIndexBuffer(&_indexBufferView);
-
-		//頂点描画
-		dx12->GetList()->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
-
-		//dx12->ResourceBarrier(renderTarget, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-
-
-		////リソースバリア
-		//_commandList->ResourceBarrier(1,&CD3DX12_RESOURCE_BARRIER::Transition(textureBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-
-		static float angle = 0.0f;
-		matrix.world = XMMatrixRotationY(angle);
-		angle += 0.01;
-		*matrixAddress = matrix;
+		camera->Update();
 
 		dx12->GetList()->Close();
 
