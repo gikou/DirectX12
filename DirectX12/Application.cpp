@@ -57,11 +57,8 @@ Application::Run(HWND hwnd) {
 	debug->EnableDebugLayer();
 	Release(debug);
 	debug = nullptr;
-	//ID3D12DebugDevice* debugInterface=nullptr;
-
-	//debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
-	//Release(debugInterface);
 #endif
+
 	ID3D12Device* device = nullptr;
 	std::shared_ptr<DX12Init> dx12;
 	dx12.reset(new DX12Init(hwnd, device));

@@ -265,25 +265,39 @@ DX12Init::CreateVertex() {
 	};*/
 
 	Vertex vertices[] = {
-		{ XMFLOAT3(-0.5, -0.5, -0.5),XMFLOAT2(0, 0) },
-		{ XMFLOAT3(-0.5, -0.5, 0.5),XMFLOAT2(1, 0) },
-		{ XMFLOAT3(0.5, -0.5, -0.5),XMFLOAT2(0, 1) },
-		{ XMFLOAT3(0.5, -0.5, 0.5),XMFLOAT2(1, 1) },
+	//正面
+	{ XMFLOAT3(-10, 10, -10),XMFLOAT2(0, 0) },
+	{ XMFLOAT3(10,   10, -10),XMFLOAT2(1, 0) },
+	{ XMFLOAT3(-10, -10, -10),XMFLOAT2(0, 1) },
+	{ XMFLOAT3(10, -10, -10),XMFLOAT2(1, 1) },
+	////左
+	//{ XMFLOAT3(10, 10, -10),XMFLOAT2(0, 0) },
+	//{ XMFLOAT3(10, 10, 10),XMFLOAT2(1, 0) },
+	//{ XMFLOAT3(10, -10, -10),XMFLOAT2(0, 1) },
+	//{ XMFLOAT3(10, -10, 10),XMFLOAT2(1, 1) },
+	////右
+	//{ XMFLOAT3(-10, 10, 10),XMFLOAT2(0, 0) },
+	//{ XMFLOAT3(-10, 10, -10),XMFLOAT2(1, 0) },
+	//{ XMFLOAT3(-10, -10, 10),XMFLOAT2(0, 1) },
+	//{ XMFLOAT3(-10, -10, -10),XMFLOAT2(1, 1) },
+	//後ろ
+	{ XMFLOAT3(10, 10, 10),XMFLOAT2(0, 0) },
+	{ XMFLOAT3(-10,   10, 10),XMFLOAT2(1, 0) },
+	{ XMFLOAT3(10, -10, 10),XMFLOAT2(0, 1) },
+	{ XMFLOAT3(-10, -10, 10),XMFLOAT2(1, 1) },
 
-	{ XMFLOAT3(-0.5, 0.5, 0.5),XMFLOAT2(0, 0) },
-	{ XMFLOAT3(-0.5, 0.5, -0.5),XMFLOAT2(1, 0) },
-	{ XMFLOAT3(-0.5, -0.5, 0.5),XMFLOAT2(0, 1) },
-	{ XMFLOAT3(-0.5, -0.5, -0.5),XMFLOAT2(1, 1) },
 
-	{ XMFLOAT3(0.5, 0.5, 0.5),XMFLOAT2(0, 0) },
-	{ XMFLOAT3(0.5, 0.5, -0.5),XMFLOAT2(1, 0) },
-	{ XMFLOAT3(0.5, -0.5, 0.5),XMFLOAT2(0, 1) },
-	{ XMFLOAT3(0.5, -0.5, -0.5),XMFLOAT2(1, 1) },
+	//天井
+	{ XMFLOAT3(10, 10, -10),XMFLOAT2(0, 0) },
+	{ XMFLOAT3(-10,  10, -10),XMFLOAT2(1, 0) },
+	{ XMFLOAT3(10, 10, 10),XMFLOAT2(0, 1) },
+	{ XMFLOAT3(-10, 10, 10),XMFLOAT2(1, 1) },
+	//地面
+	{ XMFLOAT3(-10, -10, -10),XMFLOAT2(0, 0) },
+	{ XMFLOAT3(10,  -10, -10),XMFLOAT2(1, 0) },
+	{ XMFLOAT3(-10, -10, 10),XMFLOAT2(0, 1) },
+	{ XMFLOAT3(10, -10, 10),XMFLOAT2(1, 1) },
 
-	{ XMFLOAT3(-0.5, 0.5, -0.5),XMFLOAT2(0, 0) },
-	{ XMFLOAT3(0.5,   0.5, -0.5),XMFLOAT2(1, 0) },
-	{ XMFLOAT3(-0.5, -0.5, -0.5),XMFLOAT2(0, 1) },
-	{ XMFLOAT3(0.5, -0.5, -0.5),XMFLOAT2(1, 1) },
 	};
 
 
@@ -328,7 +342,7 @@ DX12Init::CreateVertex() {
 
 HRESULT
 DX12Init::CreateIndeis() {
-	std::vector<unsigned short> indices = { 0,1,2, 1,3,2,   4,5,6, 5,7,6,   8,9,10, 9,11,10,  12,13,14, 13,15,14 };
+	std::vector<unsigned short> indices = { 0,1,2, 1,3,2,   1,4,3, 4,6,3,   4,5,7,4,7,6,  0,2,5,5,2,7, 8,9,10, 9,11,10, 12,13,14,13,15,14};
 
 	//頂点バッファの作成
 
@@ -438,6 +452,10 @@ DX12Init::CretaeTexture() {
 	return result;
 }
 
+HRESULT 
+DX12Init::CreateModel() {
+	return result;
+}
 
 HRESULT
 DX12Init::CreateShader() {
@@ -474,7 +492,7 @@ DX12Init::CreateShader() {
 	gpsDesc.InputLayout.pInputElementDescs = input;
 	gpsDesc.pRootSignature = rootSignature.Get();
 	gpsDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	gpsDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	//gpsDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	gpsDesc.SampleDesc.Count = 1;
@@ -489,11 +507,11 @@ HRESULT
 DX12Init::CreateConstantBuffer() {
 
 	auto matrix = XMMatrixIdentity();
-	auto eye = XMFLOAT3(0, 0, -1);
+	auto eye = XMFLOAT3(0, -20, -30);
 	auto target = XMFLOAT3(0, 0, 0);
 	auto up = XMFLOAT3(0, 1, 0);
-	matrix *= XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
-	matrix *= XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(640) / static_cast<float>(480), 0.1f, 300.0f);
+	camera = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
+	projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(640) / static_cast<float>(480), 0.1f, 300.0f);
 	
 
 	/*matrix.r[0].m128_f32[0] = 2.f / 640.f;
@@ -640,13 +658,14 @@ DX12Init::Draw() {
 	_commandList->SetGraphicsRootDescriptorTable(0, registerDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 
 	static float angle = 0.0f;
-	auto mat = XMMatrixRotationY(angle);
-	auto eye = XMFLOAT3(0, 0, -1);
+	XMMATRIX world = XMMatrixRotationY(angle);
+	world *= XMMatrixRotationX(angle);
+	/*auto eye = XMFLOAT3(0, 0, -1);
 	auto target = XMFLOAT3(0, 0, 0);
 	auto up = XMFLOAT3(0, 1, 0);
-	mat *= XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
-	mat *= XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(640) / static_cast<float>(480), 0.1f, 300.0f);
-	*matrixAddress = mat;
+	matrix *= XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
+	matrix *= XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(640) / static_cast<float>(480), 0.1f, 300.0f);*/
+	*matrixAddress = world*camera*projection;
 	angle += 0.01f;
 
 	//三角ポリゴン描画にする

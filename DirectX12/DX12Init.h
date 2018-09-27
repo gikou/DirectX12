@@ -14,6 +14,8 @@ private:
 	HRESULT result;
 	HWND _hwnd;
 	DirectX::XMMATRIX* matrixAddress;
+	DirectX::XMMATRIX camera;
+	DirectX::XMMATRIX projection;
 
 	unsigned char* pData;
 	ComPtr<IDXGIFactory4> factory;
@@ -45,29 +47,25 @@ private:
 	HRESULT CreateRenderTarget();
 	HRESULT CreateRootSgnature();
 	HRESULT CretaeTexture();
+	HRESULT CreateModel();
 	HRESULT CreateShader();
 	HRESULT CreateVertex();
 	HRESULT CreateIndeis();
 	HRESULT CreateConstantBuffer();
-
-
+	HRESULT ResourceBarrier(std::vector<ID3D12Resource*> recource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+	HRESULT Wait();
+	void ClearRenderTarget(unsigned int bbindex);
 
 public:
 	DX12Init(HWND hwnd, ID3D12Device* device);
 	~DX12Init();
 
 	HRESULT Initialize();
-
-	HRESULT ResourceBarrier(std::vector<ID3D12Resource*> recource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
-	HRESULT Wait();
-	void ClearRenderTarget(unsigned int bbindex);
 	void Draw();
-	ID3D12Device* GetDevice();
 	void Delete();
-	//ID3D12GraphicsCommandList* GetList();
-	//ID3D12CommandQueue* GetQueue();
-	//ID3D12CommandAllocator* GetAllocator();
 
+	ID3D12Device* GetDevice();
+	
 
 };
 
