@@ -8,6 +8,19 @@
 
 using namespace Microsoft::WRL;
 
+#pragma pack(1)
+struct PMDVertex
+{
+	DirectX::XMFLOAT3 pos;//座標(12バイト) 
+	DirectX::XMFLOAT3 normal;//法線(12バイト) 
+	DirectX::XMFLOAT2 uv;//UV(8バイト) 
+	unsigned short bornNum[2];//ボーン番号(4バイト) 
+	unsigned char bornWeight;//ウェイト(1バイト) 
+	unsigned char edgeFlag;//輪郭線フラグ(1バイト) 
+};
+#pragma pack(0)
+
+
 class DX12Init
 {
 private:
@@ -16,6 +29,8 @@ private:
 	DirectX::XMMATRIX* matrixAddress;
 	DirectX::XMMATRIX camera;
 	DirectX::XMMATRIX projection;
+
+	std::vector<PMDVertex> vertices;
 
 	unsigned char* pData;
 	ComPtr<IDXGIFactory4> factory;
@@ -47,7 +62,6 @@ private:
 	HRESULT CreateRenderTarget();
 	HRESULT CreateRootSgnature();
 	HRESULT CretaeTexture();
-	HRESULT CreateModel();
 	HRESULT CreateShader();
 	HRESULT CreateVertex();
 	HRESULT CreateIndeis();

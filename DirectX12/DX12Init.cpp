@@ -10,6 +10,10 @@
 #include<DirectXTex.h>
 #include"DX12Init.h"
 
+
+
+#include"Dx12ConstantBuffer.h"
+
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
@@ -23,6 +27,14 @@ HRESULT result = S_OK;
 struct Vertex {
 	DirectX::XMFLOAT3 pos;//座標
 	DirectX::XMFLOAT2 uv;//uv座標
+};
+
+struct PMDHeader
+{
+	float version;
+	char name[20];
+	char comment[256];
+	unsigned int vertexCount;
 };
 
 DX12Init::DX12Init(HWND hwnd, ID3D12Device* device) :_hwnd(hwnd), device(device)
@@ -82,13 +94,13 @@ DX12Init::CreateDevice() {
 
 HRESULT
 DX12Init::CreateCommand() {
-	result = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(_commandAllocator.GetAddressOf()));
+	result = device.Get()->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(_commandAllocator.GetAddressOf()));
 	if (FAILED(result)) {
 		return result;
 	}
 
 	//コマンドリストの作成
-	result = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, _commandAllocator.Get(), nullptr, IID_PPV_ARGS(_commandList.GetAddressOf()));
+	result = device.Get()->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, _commandAllocator.Get(), nullptr, IID_PPV_ARGS(_commandList.GetAddressOf()));
 	if (FAILED(result)) {
 		return result;
 	}
@@ -109,7 +121,7 @@ DX12Init::CreateCommand() {
 
 HRESULT
 DX12Init::CreateFence() {
-	result = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(fence.GetAddressOf()));
+	result = device.Get()->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(fence.GetAddressOf()));
 	fenceEvent = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
 	return result;
 }
@@ -150,7 +162,7 @@ DX12Init::CreateRenderTarget() {
 	descriptor.NumDescriptors = 2;
 	descriptor.NodeMask = 0;
 
-	result = device->CreateDescriptorHeap(&descriptor, IID_PPV_ARGS(descriptorHeap.GetAddressOf()));
+	result = device.Get()->CreateDescriptorHeap(&descriptor, IID_PPV_ARGS(descriptorHeap.GetAddressOf()));
 	if (FAILED(result)) {
 		return result;
 	}
@@ -162,10 +174,10 @@ DX12Init::CreateRenderTarget() {
 	//レンダーターゲット数ぶん確保
 	renderTarget.resize(2);
 	//ディスクリプタ1個あたりのサイズを取得
-	unsigned int descriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	unsigned int descriptorSize = device.Get()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	for (int i = 0; i < 2; ++i) {
 		result = swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTarget[i]));//スワップチェインからキャンバスを取得
-		device->CreateRenderTargetView(renderTarget[i], nullptr, descriptorHandle);//キャンバスとビューを紐づけ
+		device.Get()->CreateRenderTargetView(renderTarget[i], nullptr, descriptorHandle);//キャンバスとビューを紐づけ
 		descriptorHandle.Offset(descriptorSize);//キャンバスとビューのぶん次のところまでオフセット
 	}
 	return result;
@@ -231,11 +243,11 @@ DX12Init::CreateRootSgnature() {
 		return result;
 	}
 
-	result = device->CreateRootSignature(
+	result = device.Get()->CreateRootSignature(
 		0,
 		signature->GetBufferPointer(),
 		signature->GetBufferSize(),
-		IID_PPV_ARGS(&rootSignature)
+		IID_PPV_ARGS(rootSignature.GetAddressOf())
 	);
 	return result;
 }
@@ -243,56 +255,26 @@ DX12Init::CreateRootSgnature() {
 HRESULT
 DX12Init::CreateVertex() {
 
-	//頂点情報の作成
-	//Vertex vertices[] = {
-	//{ { -0.7f	, -0.7f , 0.0f }		,{ 0.0f, 0.0f } },
-	//{ { -0.7f	,  0.7f	, 0.0f }		,{ 0.0f, 1.0f } },
-	//{ { 0.7f	, -0.7f	, 0.0f }		,{ 1.0f, 0.0f } },
-	//{ { 0.7f	, 0.7f	, 0.0f }		,{ 1.0f, 1.0f } },
-
-	//};
-
-	/*Vertex vertices[] = {
-	{ XMFLOAT3(0, 0, 0),XMFLOAT2(0, 0) },
-	{ XMFLOAT3(320,   0, 0),XMFLOAT2(1, 0) },
-	{ XMFLOAT3(0, 240, 0),XMFLOAT2(0, 1) },
-	{ XMFLOAT3(320, 240, 0),XMFLOAT2(1, 1) },
-
-	{ XMFLOAT3(0, 240, 0),XMFLOAT2(0, 0) },
-	{ XMFLOAT3(0, 240, 640),XMFLOAT2(1, 0) },
-	{ XMFLOAT3(320, 240, 0),XMFLOAT2(0, 1) },
-	{ XMFLOAT3(320, 480, 640),XMFLOAT2(1, 1) },
-	};*/
+	
 
 	Vertex vertices[] = {
-	//正面
+
 	{ XMFLOAT3(-10, 10, -10),XMFLOAT2(0, 0) },
 	{ XMFLOAT3(10,   10, -10),XMFLOAT2(1, 0) },
 	{ XMFLOAT3(-10, -10, -10),XMFLOAT2(0, 1) },
 	{ XMFLOAT3(10, -10, -10),XMFLOAT2(1, 1) },
-	////左
-	//{ XMFLOAT3(10, 10, -10),XMFLOAT2(0, 0) },
-	//{ XMFLOAT3(10, 10, 10),XMFLOAT2(1, 0) },
-	//{ XMFLOAT3(10, -10, -10),XMFLOAT2(0, 1) },
-	//{ XMFLOAT3(10, -10, 10),XMFLOAT2(1, 1) },
-	////右
-	//{ XMFLOAT3(-10, 10, 10),XMFLOAT2(0, 0) },
-	//{ XMFLOAT3(-10, 10, -10),XMFLOAT2(1, 0) },
-	//{ XMFLOAT3(-10, -10, 10),XMFLOAT2(0, 1) },
-	//{ XMFLOAT3(-10, -10, -10),XMFLOAT2(1, 1) },
-	//後ろ
+
 	{ XMFLOAT3(10, 10, 10),XMFLOAT2(0, 0) },
 	{ XMFLOAT3(-10,   10, 10),XMFLOAT2(1, 0) },
 	{ XMFLOAT3(10, -10, 10),XMFLOAT2(0, 1) },
 	{ XMFLOAT3(-10, -10, 10),XMFLOAT2(1, 1) },
 
 
-	//天井
 	{ XMFLOAT3(10, 10, -10),XMFLOAT2(0, 0) },
 	{ XMFLOAT3(-10,  10, -10),XMFLOAT2(1, 0) },
 	{ XMFLOAT3(10, 10, 10),XMFLOAT2(0, 1) },
 	{ XMFLOAT3(-10, 10, 10),XMFLOAT2(1, 1) },
-	//地面
+
 	{ XMFLOAT3(-10, -10, -10),XMFLOAT2(0, 0) },
 	{ XMFLOAT3(10,  -10, -10),XMFLOAT2(1, 0) },
 	{ XMFLOAT3(-10, -10, 10),XMFLOAT2(0, 1) },
@@ -300,20 +282,8 @@ DX12Init::CreateVertex() {
 
 	};
 
-
-
-	/*Vertex vertices[] = {
-	{ { -0.7f,  0.7f, 0.0f },{ 0.0f, 0.0f } },
-	{ { 0.7f,  0.7f, 0.0f },{ 1.0f, 0.0f } },
-	{ { 0.7f, -0.7f, 0.0f },{ 1.0f, 1.0f } },
-
-	{ { 0.7f, -0.7f, 0.0f },{ 1.0f, 1.0f } },
-	{ { -0.7f, -0.7f, 0.0f },{ 0.0f, 1.0f } },
-	{ { -0.7f,  0.7f, 0.0f },{ 0.0f, 0.0f } }
-	};*/
-
 	//頂点バッファの作成
-	result = device->CreateCommittedResource(
+	result = device.Get()->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),//CPUからGPUへ転送する用
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(vertices)),//サイズ
@@ -346,7 +316,7 @@ DX12Init::CreateIndeis() {
 
 	//頂点バッファの作成
 
-	result = device->CreateCommittedResource(
+	result = device.Get()->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),//CPUからGPUへ転送する用
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(indices.size() * sizeof(indices[0])),//サイズ
@@ -404,7 +374,7 @@ DX12Init::CretaeTexture() {
 	hprop.CreationNodeMask = 1;
 	hprop.VisibleNodeMask = 1;
 
-	result = device->CreateCommittedResource(
+	result = device.Get()->CreateCommittedResource(
 		&hprop,
 		D3D12_HEAP_FLAG_NONE,
 		&texResourceDesc,
@@ -435,27 +405,36 @@ DX12Init::CretaeTexture() {
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-	result = device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(registerDescHeap.GetAddressOf()));
+	result = device.Get()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(registerDescHeap.GetAddressOf()));
 	if (FAILED(result)) {
 		return result;
 	}
-	unsigned int stride = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	D3D12_SHADER_RESOURCE_VIEW_DESC sDesc = {};
 	sDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	sDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	sDesc.Texture2D.MipLevels = 1;
 	sDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-	device->CreateShaderResourceView(textureBuffer.Get(), &sDesc, registerDescHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+	device.Get()->CreateShaderResourceView(textureBuffer.Get(), &sDesc, registerDescHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 
 
 	return result;
 }
-
-HRESULT 
-DX12Init::CreateModel() {
-	return result;
-}
+//
+//HRESULT 
+//DX12Init::CreateModel() {
+//	FILE* modelfp=nullptr;
+//	fopen_s(&modelfp, "model/初音ミク.pmd", "rb");
+//	PMDHeader pmdHeader;
+//	char type[3];
+//	fread(&type, sizeof(type), 1, modelfp);
+//	fread(&pmdHeader, sizeof(pmdHeader), 1, modelfp);
+//
+//	vertices.resize(pmdHeader.vertexCount);
+//	fread(&vertices[0], sizeof(PMDVertex), pmdHeader.vertexCount, modelfp);
+//	fclose(modelfp);
+//	return result;
+//}
 
 HRESULT
 DX12Init::CreateShader() {
@@ -499,7 +478,7 @@ DX12Init::CreateShader() {
 	gpsDesc.NumRenderTargets = 1;
 	gpsDesc.SampleMask = UINT_MAX;
 
-	result = device->CreateGraphicsPipelineState(&gpsDesc, IID_PPV_ARGS(&pipelineState));
+	result = device.Get()->CreateGraphicsPipelineState(&gpsDesc, IID_PPV_ARGS(pipelineState.GetAddressOf()));
 	return result;
 }
 
@@ -522,7 +501,7 @@ DX12Init::CreateConstantBuffer() {
 	size_t size = sizeof(matrix);
 	size = (size + 0xff)&~0xff;
 
-	result = device->CreateCommittedResource(
+	result = device.Get()->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
 		&CD3DX12_RESOURCE_DESC::Buffer(size),
@@ -532,6 +511,7 @@ DX12Init::CreateConstantBuffer() {
 	if (FAILED(result)) {
 		return result;
 	}
+
 	
 
 	D3D12_RANGE range = { 0,0 };
@@ -544,9 +524,9 @@ DX12Init::CreateConstantBuffer() {
 	cbvDesc.SizeInBytes = size;
 	auto handle = registerDescHeap->GetCPUDescriptorHandleForHeapStart();
 
-	handle.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	handle.ptr += device.Get()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	device->CreateConstantBufferView(&cbvDesc, handle);
+	device.Get()->CreateConstantBufferView(&cbvDesc, handle);
 	return result;
 }
 
@@ -586,13 +566,12 @@ DX12Init::Initialize() {
 	if (FAILED(CreateConstantBuffer())) {
 		MessageBox(nullptr, L"Error", L"カメラ作成に失敗しました", MB_OK | MB_ICONEXCLAMATION);
 	}
-
 	return result;
 }
 
 HRESULT
 DX12Init::ResourceBarrier(std::vector<ID3D12Resource*> recource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
-	_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(recource[swapChain->GetCurrentBackBufferIndex()], before, after));
+	_commandList.Get()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(recource[swapChain->GetCurrentBackBufferIndex()], before, after));
 	return S_OK;
 }
 
@@ -600,6 +579,7 @@ HRESULT
 DX12Init::Wait() {
 	static UINT64 frames_ = 0;
 	const UINT64 fenceValue = frames_;
+
 	result = _commandQueue->Signal(fence.Get(), frames_);
 	++frames_;
 
@@ -614,7 +594,7 @@ DX12Init::Wait() {
 
 void
 DX12Init::ClearRenderTarget(unsigned int bbindex) {
-	static const float color[] = { 0.5f, 0.5f, 0.5f, 1.0f };
+	static const float color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
 	//ビューポート
 	D3D12_VIEWPORT viewPort = {};
@@ -626,72 +606,67 @@ DX12Init::ClearRenderTarget(unsigned int bbindex) {
 	viewPort.MaxDepth = 1.0f;
 
 	//ルートシグネチャのセット
-	_commandList->SetGraphicsRootSignature(rootSignature.Get());
+	_commandList.Get()->SetGraphicsRootSignature(rootSignature.Get());
 
 	//パイプラインのセット
-	_commandList->SetPipelineState(pipelineState.Get());
+	_commandList.Get()->SetPipelineState(pipelineState.Get());
 
 	//ビューポートをセット
-	_commandList->RSSetViewports(1, &viewPort);
+	_commandList.Get()->RSSetViewports(1, &viewPort);
 	//シザーをセット
 	const D3D12_RECT rect = { 0, 0, WIN_WIDTH, WIN_HEIGTH };
-	_commandList->RSSetScissorRects(1, &rect);
+	_commandList.Get()->RSSetScissorRects(1, &rect);
 
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap.Get()->GetCPUDescriptorHandleForHeapStart(), bbindex, device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
-	_commandList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
-	_commandList->ClearRenderTargetView(rtvHandle, color, 0, nullptr);
+	_commandList.Get()->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
+	_commandList.Get()->ClearRenderTargetView(rtvHandle, color, 0, nullptr);
 }
 
 void
 DX12Init::Draw() {
 	static unsigned int bbIndex = 0;
-	_commandAllocator->Reset();
-	_commandList->Reset(_commandAllocator.Get(), pipelineState.Get());
+	_commandAllocator.Get()->Reset();
+	_commandList.Get()->Reset(_commandAllocator.Get(), pipelineState.Get());
 
 	ResourceBarrier(renderTarget, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	ClearRenderTarget(bbIndex);
 
 	//シェーダリソースビュー用のデスクリプタをセット
-	_commandList->SetDescriptorHeaps(1, (ID3D12DescriptorHeap* const*)registerDescHeap.GetAddressOf());
-	_commandList->SetGraphicsRootDescriptorTable(0, registerDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+	_commandList.Get()->SetDescriptorHeaps(1, (ID3D12DescriptorHeap* const*)registerDescHeap.GetAddressOf());
+	_commandList.Get()->SetGraphicsRootDescriptorTable(0, registerDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 
 	static float angle = 0.0f;
 	XMMATRIX world = XMMatrixRotationY(angle);
 	world *= XMMatrixRotationX(angle);
-	/*auto eye = XMFLOAT3(0, 0, -1);
-	auto target = XMFLOAT3(0, 0, 0);
-	auto up = XMFLOAT3(0, 1, 0);
-	matrix *= XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
-	matrix *= XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(640) / static_cast<float>(480), 0.1f, 300.0f);*/
 	*matrixAddress = world*camera*projection;
 	angle += 0.01f;
 
 	//三角ポリゴン描画にする
-	_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	_commandList.Get()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	//頂点バッファのセット
-	_commandList->IASetVertexBuffers(0, 1, &vbView);
-	_commandList->IASetIndexBuffer(&indexView);
+	_commandList.Get()->IASetVertexBuffers(0, 1, &vbView);
+	_commandList.Get()->IASetIndexBuffer(&indexView);
 	//頂点描画
 	int cont = indexView.SizeInBytes/sizeof(unsigned short);
-	_commandList->DrawIndexedInstanced(cont, cont/3, 0, 0, 0);
+	_commandList.Get()->DrawIndexedInstanced(cont, cont/3, 0, 0, 0);
 
 	ResourceBarrier(renderTarget, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
-	_commandList->Close();
+	_commandList.Get()->Close();
 	ID3D12CommandList* commandList[] = { _commandList.Get() };
 	_commandQueue->ExecuteCommandLists(_countof(commandList), commandList);
 
 
 	Wait();
-	result = swapChain->Present(1, 0);
+	result = swapChain.Get()->Present(1, 0);
 	if (FAILED(result))
 	{
 		result = device->GetDeviceRemovedReason();
 	}
-	bbIndex = swapChain->GetCurrentBackBufferIndex();
-	result = device->GetDeviceRemovedReason();
+	bbIndex = swapChain.Get()->GetCurrentBackBufferIndex();
+	result = device.Get()->GetDeviceRemovedReason();
 
 }
 

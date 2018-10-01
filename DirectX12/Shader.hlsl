@@ -23,5 +23,6 @@ Out BasicVS(float4 pos : POSITION, float2 uv : TEXCOORD)
 float4 BasicPS(Out o) : SV_TARGET
 {
 	return float4(tex.Sample(smp, o.uv).rgb,1);
+	//return float4(1,1,1,1);
 	//return float4(o.pos);
 }

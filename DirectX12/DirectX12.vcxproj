@@ -122,15 +122,28 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="Dx12Buffer.cpp" />
+    <ClCompile Include="Dx12BufferManager.cpp" />
+    <ClCompile Include="Dx12ConstantBuffer.cpp" />
+    <ClCompile Include="Dx12ConstantBufferBase.cpp" />
     <ClCompile Include="DX12Init.cpp" />
+    <ClCompile Include="Dx12TextureBufffer.cpp" />
+    <ClCompile Include="DxViewSet.cpp" />
     <ClCompile Include="ImageData.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="d3dx12.h" />
+    <ClInclude Include="Dx12Buffer.h" />
+    <ClInclude Include="Dx12BufferManager.h" />
+    <ClInclude Include="Dx12ConstantBuffer.h" />
+    <ClInclude Include="Dx12ConstantBufferBase.h" />
     <ClInclude Include="DX12Init.h" />
+    <ClInclude Include="Dx12TextureBufffer.h" />
+    <ClInclude Include="DxViewSet.h" />
     <ClInclude Include="ImageData.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader.hlsl">
