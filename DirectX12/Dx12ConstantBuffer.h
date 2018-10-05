@@ -1,20 +1,29 @@
 #pragma once
-#include "Dx12ConstantBufferBase.h"
-template <typename T>
-class Dx12ConstantBuffer:public Dx12ConstantBufferBase
+#include<vector>
+#include<DirectXMath.h>
+struct ID3D12Device;
+struct ID3D12Resource;
+
+//struct BaseMatrixes {
+//	DirectX::XMMATRIX world;//ワールド 
+//	DirectX::XMMATRIX viewproj;//ビュープロジェ 
+//};
+
+class Dx12ConstantBuffer
 {
 private:
+	ID3D12Device * _device;
+	/*BaseMatrixes* matrixAddress;
+	DirectX::XMMATRIX camera;
+	DirectX::XMMATRIX projection;*/
 
-	friend Dx12BufferManager;
-private:
-	T* _mappedAddress;
-	Dx12ConstantBuffer() {};
+	std::vector<ID3D12Resource*> constantBuffers;
 	Dx12ConstantBuffer(const Dx12ConstantBuffer&);
 	//void operator=(const Dx12ConstantBuffer&);
 public:
+	Dx12ConstantBuffer(ID3D12Device* device);
 	~Dx12ConstantBuffer();
-	void UpdateValue(T& value) {
-		*_mappedAddress = value;
-	}
+	void CreateConstant(size_t size);
+	std::vector<ID3D12Resource*> GetConstantBuffers();
 };
 

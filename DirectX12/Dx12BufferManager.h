@@ -1,32 +1,29 @@
 #pragma once
-class Dx12Init;
-class Dx12TextureBuffer;
-class Dx12ConstantBuffer;
+#include<vector>
+#include<memory>
 struct ID3D12Resource;
-
+struct ID3D12GraphicsCommandList;
+class Dx12ConstantBuffer;
+class Dx12TextureBufffer;
+class DxViewSet;
 class Dx12BufferManager
 {
 private:
-	//定数バッファアライメントサイズを返す() 
-	size_t GetConstantBufferAlignmentedSize(size_t size);
-	ID3D12Resource* CreateConstantBufferResource(size_t size);
-	Dx12Init& _dx;
+	ID3D12Device* _device;
+	ID3D12DescriptorHeap* heap;
+	std::shared_ptr<Dx12ConstantBuffer> _cbuff;
+	std::shared_ptr<Dx12TextureBufffer> _texbuff;
+	std::shared_ptr<DxViewSet> view;
+	std::vector<ID3D12Resource*> constantBuffers;
+	std::vector<ID3D12Resource*> textureBuffers;
+	
 public:
-	Dx12BufferManager(Dx12Init& dx);
+	Dx12BufferManager(ID3D12Device* device);
 	~Dx12BufferManager();
 
-	Dx12TextureBuffer* CreateTextureBuffer(const char* groupname, size_t width, size_t height);
+	void CreateDescriptorHeap();
+	void CreateTextureBuffer();
+	void Update(ID3D12GraphicsCommandList* list);
 
-	Dx12TextureBuffer* CreateTextureBufferFromFile(const char* groupname, const wchar_t* filepath);
-
-	///コンスタントバッファを作成します 
-	///@param groupname グループ名(ワンセットにするための識別名) 
-	/*template <typename T>
-	inline Dx12ConstantBuffer<T>* CreateConstantBuffer(const char* groupname) {
-		auto ret = new Dx12ConstantBuffer<T>();
-		ret->_buffSize = GetConstantBufferAlignmentedSize(sizeof(T));
-		ret->_resource.Attach(CreateConstantBufferResource(ret->_buffSize));
-		ret->_mappedAddress = static_cast<T*>(ret->Map());
-		return ret;
-	}*/
+	ID3D12DescriptorHeap* GetDescriptorHeap();
 };

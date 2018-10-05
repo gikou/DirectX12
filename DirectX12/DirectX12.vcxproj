@@ -125,12 +125,13 @@
     <ClCompile Include="Dx12Buffer.cpp" />
     <ClCompile Include="Dx12BufferManager.cpp" />
     <ClCompile Include="Dx12ConstantBuffer.cpp" />
-    <ClCompile Include="Dx12ConstantBufferBase.cpp" />
     <ClCompile Include="DX12Init.cpp" />
     <ClCompile Include="Dx12TextureBufffer.cpp" />
     <ClCompile Include="DxViewSet.cpp" />
     <ClCompile Include="ImageData.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="PMDModel.cpp" />
+    <ClCompile Include="PMXModel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
@@ -138,11 +139,12 @@
     <ClInclude Include="Dx12Buffer.h" />
     <ClInclude Include="Dx12BufferManager.h" />
     <ClInclude Include="Dx12ConstantBuffer.h" />
-    <ClInclude Include="Dx12ConstantBufferBase.h" />
     <ClInclude Include="DX12Init.h" />
     <ClInclude Include="Dx12TextureBufffer.h" />
     <ClInclude Include="DxViewSet.h" />
     <ClInclude Include="ImageData.h" />
+    <ClInclude Include="PMDModel.h" />
+    <ClInclude Include="PMXModel.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>

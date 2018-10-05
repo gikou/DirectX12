@@ -5,20 +5,23 @@
 #include <DirectXMath.h>
 #include <wrl/client.h>
 #include<vector>
+#include<memory>
+
 
 using namespace Microsoft::WRL;
 
-#pragma pack(1)
-struct PMDVertex
-{
-	DirectX::XMFLOAT3 pos;//座標(12バイト) 
-	DirectX::XMFLOAT3 normal;//法線(12バイト) 
-	DirectX::XMFLOAT2 uv;//UV(8バイト) 
-	unsigned short bornNum[2];//ボーン番号(4バイト) 
-	unsigned char bornWeight;//ウェイト(1バイト) 
-	unsigned char edgeFlag;//輪郭線フラグ(1バイト) 
+
+
+class Dx12BufferManager;
+class PMDModel;
+class PMXModel;
+
+struct BaseMatrixes {
+	DirectX::XMMATRIX world;//ワールド 
+	DirectX::XMMATRIX viewproj;//ビュープロジェ 
+
+	DirectX::XMFLOAT3 diffuse;
 };
-#pragma pack(0)
 
 
 class DX12Init
@@ -26,11 +29,9 @@ class DX12Init
 private:
 	HRESULT result;
 	HWND _hwnd;
-	DirectX::XMMATRIX* matrixAddress;
+	BaseMatrixes* matrixAddress;
 	DirectX::XMMATRIX camera;
 	DirectX::XMMATRIX projection;
-
-	std::vector<PMDVertex> vertices;
 
 	unsigned char* pData;
 	ComPtr<IDXGIFactory4> factory;
@@ -49,11 +50,18 @@ private:
 	D3D12_INDEX_BUFFER_VIEW indexView;
 	ComPtr<ID3D12Resource> _indexBuffer;
 	ComPtr<ID3D12DescriptorHeap> registerDescHeap;	//テクスチャだったり、、、定数バッファだったり、、、
+	ComPtr<ID3D12DescriptorHeap> _dsvHeap;
+	ComPtr<ID3D12DescriptorHeap> materialDescHeap;	//テクスチャだったり、、、定数バッファだったり、、、
 	ComPtr<ID3D12Resource> _constantBuffer;
+	ComPtr<ID3D12Resource> _depthBuffer;
+	ComPtr<ID3D12Resource> _materialBuffer;
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
 	ComPtr<ID3D12Resource> vertexBuffer;
 	ComPtr<ID3D12Resource> textureBuffer;
 
+	//std::shared_ptr<Dx12BufferManager> buffer;
+	std::shared_ptr<PMDModel> model;
+	std::shared_ptr<PMXModel> pmxmodel;
 
 	HRESULT CreateDevice();
 	HRESULT CreateCommand();
@@ -66,6 +74,8 @@ private:
 	HRESULT CreateVertex();
 	HRESULT CreateIndeis();
 	HRESULT CreateConstantBuffer();
+	HRESULT CreateMaterialBuffer();
+	HRESULT CreateDepth();
 	HRESULT ResourceBarrier(std::vector<ID3D12Resource*> recource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 	HRESULT Wait();
 	void ClearRenderTarget(unsigned int bbindex);
