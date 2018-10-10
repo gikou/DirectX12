@@ -55,7 +55,7 @@ Application::Run(HWND hwnd) {
 	if (FAILED(result))
 		int i = 0;
 	debug->EnableDebugLayer();
-	Release(debug);
+	//Release(debug);
 	debug = nullptr;
 #endif
 

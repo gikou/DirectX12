@@ -20,9 +20,18 @@ struct BaseMatrixes {
 	DirectX::XMMATRIX world;//ワールド 
 	DirectX::XMMATRIX viewproj;//ビュープロジェ 
 
-	DirectX::XMFLOAT3 diffuse;
 };
 
+struct Material {
+	DirectX::XMFLOAT3 diffuse;//基本色(拡散反射色) 
+	float alpha;//;アルファ色 
+	float specularity;//スペキュラ強さ 
+	DirectX::XMFLOAT3 specular;//スペキュラ(反射色) 
+	DirectX::XMFLOAT3 mirror;//アンビエント 
+	unsigned char toonIdx;//トゥーんのインデックス 
+	unsigned char edgeFlg;//輪郭線フラグ 
+	int texflag;
+};
 
 class DX12Init
 {
@@ -32,6 +41,9 @@ private:
 	BaseMatrixes* matrixAddress;
 	DirectX::XMMATRIX camera;
 	DirectX::XMMATRIX projection;
+
+	
+	Material* mapped;
 
 	unsigned char* pData;
 	ComPtr<IDXGIFactory4> factory;
@@ -46,19 +58,23 @@ private:
 	std::vector<ID3D12Resource*> renderTarget;
 	ComPtr<ID3D12RootSignature> rootSignature;
 	ComPtr<ID3D12PipelineState> pipelineState;
-	D3D12_VERTEX_BUFFER_VIEW vbView;
-	D3D12_INDEX_BUFFER_VIEW indexView;
-	ComPtr<ID3D12Resource> _indexBuffer;
+	
 	ComPtr<ID3D12DescriptorHeap> registerDescHeap;	//テクスチャだったり、、、定数バッファだったり、、、
 	ComPtr<ID3D12DescriptorHeap> _dsvHeap;
-	ComPtr<ID3D12DescriptorHeap> materialDescHeap;	//テクスチャだったり、、、定数バッファだったり、、、
+	
 	ComPtr<ID3D12Resource> _constantBuffer;
 	ComPtr<ID3D12Resource> _depthBuffer;
-	ComPtr<ID3D12Resource> _materialBuffer;
-	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
+
+	D3D12_VERTEX_BUFFER_VIEW vbView;
+	D3D12_INDEX_BUFFER_VIEW indexView;
 	ComPtr<ID3D12Resource> vertexBuffer;
+	ComPtr<ID3D12Resource> _indexBuffer;
+
 	ComPtr<ID3D12Resource> textureBuffer;
 
+
+	std::vector<ComPtr<ID3D12Resource>> _materialsBuffer;
+	ComPtr<ID3D12DescriptorHeap> materialDescHeap;	//テクスチャだったり、、、定数バッファだったり、、、
 	//std::shared_ptr<Dx12BufferManager> buffer;
 	std::shared_ptr<PMDModel> model;
 	std::shared_ptr<PMXModel> pmxmodel;
