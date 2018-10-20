@@ -19,18 +19,13 @@ class PMXModel;
 struct BaseMatrixes {
 	DirectX::XMMATRIX world;//ワールド 
 	DirectX::XMMATRIX viewproj;//ビュープロジェ 
-
+	DirectX::XMFLOAT4 eye;
 };
 
 struct Material {
-	DirectX::XMFLOAT3 diffuse;//基本色(拡散反射色) 
-	float alpha;//;アルファ色 
-	float specularity;//スペキュラ強さ 
-	DirectX::XMFLOAT3 specular;//スペキュラ(反射色) 
-	DirectX::XMFLOAT3 mirror;//アンビエント 
-	unsigned char toonIdx;//トゥーんのインデックス 
-	unsigned char edgeFlg;//輪郭線フラグ 
-	int texflag;
+	DirectX::XMFLOAT4 diffuse;//基本色(拡散反射色) 
+	DirectX::XMFLOAT4 specular;//スペキュラ(反射色) 
+	DirectX::XMFLOAT4 ambient;//アンビエント 
 };
 
 class DX12Init
@@ -39,6 +34,7 @@ private:
 	HRESULT result;
 	HWND _hwnd;
 	BaseMatrixes* matrixAddress;
+	DirectX::XMFLOAT3 eye;
 	DirectX::XMMATRIX camera;
 	DirectX::XMMATRIX projection;
 
@@ -71,10 +67,15 @@ private:
 	ComPtr<ID3D12Resource> _indexBuffer;
 
 	ComPtr<ID3D12Resource> textureBuffer;
+	std::vector<ComPtr<ID3D12Resource>> modelTextureBuffer;
+	std::vector<ComPtr<ID3D12Resource>> toonTextureBuffer;
+	ComPtr<ID3D12Resource> whiteTexBuffer;
+	ComPtr<ID3D12Resource> blackTexBuffer;
 
 
 	std::vector<ComPtr<ID3D12Resource>> _materialsBuffer;
-	ComPtr<ID3D12DescriptorHeap> materialDescHeap;	//テクスチャだったり、、、定数バッファだったり、、、
+	ComPtr<ID3D12DescriptorHeap> materialDescHeap;	//マテリアル用
+	ComPtr<ID3D12DescriptorHeap> specularDescHeap;	//マテリアル用
 	//std::shared_ptr<Dx12BufferManager> buffer;
 	std::shared_ptr<PMDModel> model;
 	std::shared_ptr<PMXModel> pmxmodel;
@@ -86,6 +87,11 @@ private:
 	HRESULT CreateRenderTarget();
 	HRESULT CreateRootSgnature();
 	HRESULT CretaeTexture();
+	HRESULT CretaeToonTexture();
+	HRESULT CreateModelTextures();
+	void CreateWhiteTexBuffer();
+	void CreateBlackTexBuffer();
+	std::string GetToon(int index);
 	HRESULT CreateShader();
 	HRESULT CreateVertex();
 	HRESULT CreateIndeis();
