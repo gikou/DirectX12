@@ -53,6 +53,25 @@ struct SDEF {
 	DirectX::XMFLOAT3 vec2;
 	DirectX::XMFLOAT3 vec3;
 };
+
+struct PMXMaterial {
+	std::wstring name;
+	std::wstring engName;
+	DirectX::XMFLOAT4 diffuse;
+	DirectX::XMFLOAT3 specular;
+	float specularity;
+	DirectX::XMFLOAT3 ambient;
+	unsigned char edgeSize;
+	DirectX::XMFLOAT4 edgeColor;
+	unsigned char normalTexIndex;
+	unsigned char sphirTexIndex;
+	unsigned char sphirMode;
+	unsigned char toonFlag;
+	unsigned char toonIndex;
+	std::wstring comment;
+	unsigned short indices;
+};
+
 #pragma pack(0)
 
 class PMXModel
@@ -61,11 +80,14 @@ private:
 	std::vector<PMXVertex> verteices;
 	std::vector<unsigned short> indices;
 	std::vector<std::wstring> texture;
+	std::vector<PMXMaterial> materials;
+	std::vector<std::wstring> toonTextures;
 public:
 	PMXModel(const char* filename);
 	~PMXModel();
 
 	std::vector<PMXVertex> GetVertices();
 	std::vector<unsigned short> GetIndices();
+	std::vector<PMXMaterial> GetMaterials();
 };
 

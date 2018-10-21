@@ -43,7 +43,7 @@ float4 BasicPS(Out o) : SV_TARGET
     //return float4(1, 1, 1, 1);
 	//
     
-    //float3 lightcol = (0.6f, 0.6f, 0.6f);
+    float3 lightcol = (0.6f, 0.6f, 0.6f);
 
     float3 eye = peye.xyz;
     float3 ray = normalize(o.pos.xyz - eye);
@@ -52,7 +52,7 @@ float4 BasicPS(Out o) : SV_TARGET
     float spec = saturate(dot(pow(ref, ray), specular.a));
     float brightness = dot(light, o.normal.xyz);
     //brightness = saturate(acos(brightness) / 3.14);
-
+   // return float4(brightness, brightness, brightness, 1);
     float3 vray = normalize(eye - o.pos.xyz );
 
     float3 up = float3(0, 1, 0);
@@ -68,7 +68,7 @@ float4 BasicPS(Out o) : SV_TARGET
     float3 spacol = spa.Sample(smp, uv);
     float3 sphcol = sph.Sample(smp, uv);
     float3 texcol = modelTex.Sample(smp, o.uv);
-    float3 matcol = diffuse.rgb + specular.rgb * spec + ambient.rgb*tooncol.rgb;
+    float3 matcol = tooncol.rgb * diffuse.rgb + specular.rgb * spec + ambient.rgb * lightcol;
 
     float3 col = spacol.rgb + sphcol.rgb * texcol.rgb * matcol.rgb;
     return float4(col,diffuse.a);

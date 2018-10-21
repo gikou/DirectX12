@@ -81,13 +81,63 @@ PMXModel::PMXModel(const char* filename)
 	unsigned int texsize = 0;
 	fread(&texsize, sizeof(unsigned int), 1, modelfp);
 
-	//texture.resize(texsize);
-	//for (int i = 0; i < texsize; i++) {
-	//	unsigned int num;
-	//	fread(&num, sizeof(num), 1, modelfp);
-	//	texture[i].resize(num);
-	//	fread(&texture[0], sizeof(texture[0]), num, modelfp);
-	//}
+
+	std::vector<std::wstring> textures(texsize);
+	for (int i = 0; i < texsize; i++) {
+
+		char textsize = 0;
+		fread(&textsize, sizeof(unsigned char), 4, modelfp);
+
+		textures[i].resize(textsize / 2);
+		fread(&textures[i][0], textures[i].size(), 2, modelfp);
+	}
+
+	unsigned int materialsize = 0;
+	fread(&materialsize, sizeof(unsigned int), 1, modelfp);
+
+	materials.resize(materialsize);
+	toonTextures.resize(materialsize);
+	int i = 0;
+	for (auto& mat : materials) {
+		char textsize = 0;
+		fread(&textsize, sizeof(char), 4, modelfp);
+		mat.name.resize(textsize /2);
+
+		fread(&mat.name[0], mat.name.size(), 2, modelfp);
+		fread(&textsize, sizeof(char), 4, modelfp);
+		mat.engName.resize(textsize/2);
+		fread(&mat.engName, mat.engName.size(), 2, modelfp);
+		fread(&mat.diffuse, sizeof(mat.diffuse), 1, modelfp);
+		fread(&mat.specular, sizeof(mat.specular), 1, modelfp);
+		fread(&mat.specularity, sizeof(mat.specularity), 1, modelfp);
+		fread(&mat.ambient, sizeof(mat.ambient), 1, modelfp);
+
+		char bitflag[1];
+		fread(&bitflag, sizeof(char), 1, modelfp);
+
+		fread(&mat.edgeColor, sizeof(mat.edgeColor), 1, modelfp);
+		fread(&mat.edgeSize, sizeof(mat.edgeSize), 4, modelfp);
+		
+		fread(&mat.normalTexIndex, sizeof(mat.normalTexIndex), 1, modelfp);
+		fread(&mat.sphirTexIndex, sizeof(mat.sphirTexIndex), 1, modelfp);
+		fread(&mat.sphirMode, sizeof(mat.sphirMode), 1, modelfp);
+		fread(&mat.toonFlag, sizeof(mat.toonFlag), 1, modelfp);
+		if (mat.toonFlag) {
+			fread(&mat.toonIndex, sizeof(mat.toonIndex), 1, modelfp);
+		}
+		else {
+			fread(&mat.toonIndex, sizeof(mat.toonIndex), 1, modelfp);
+		}
+		textsize = 0;
+		fread(&textsize, sizeof(char), 4, modelfp);
+		mat.comment.resize(textsize/2);
+		fread(&mat.comment[0], mat.comment.size(), 2, modelfp);
+		fread(&mat.indices, sizeof(mat.indices), 1, modelfp);
+		unsigned char nazo = 0;
+		fread(&nazo, sizeof(nazo), 2, modelfp);
+		i++;
+	}
+	
 	fclose(modelfp);
 	
 }
@@ -105,4 +155,9 @@ PMXModel::GetVertices() {
 std::vector<unsigned short> 
 PMXModel::GetIndices() {
 	return indices;
+}
+
+std::vector<PMXMaterial>
+PMXModel::GetMaterials() {
+	return materials;
 }

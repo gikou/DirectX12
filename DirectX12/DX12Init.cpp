@@ -74,9 +74,9 @@ CreateTexBuffer(ID3D12Device* device, ID3D12Resource* TexBuffer, int w, int h, i
 
 DX12Init::DX12Init(HWND hwnd, ID3D12Device* device) :_hwnd(hwnd), device(device)
 {
-	model.reset(new PMDModel("Model/霊夢/reimu.pmd"));
+	//model.reset(new PMDModel("Model/霊夢/reimu.pmd"));
 	//model.reset(new PMDModel("Model/初音ミク/初音ミク.pmd"));
-	//model.reset(new PMDModel("Model/初音ミクメタル/初音ミクmetal.pmd"));
+	model.reset(new PMDModel("Model/初音ミクメタル/初音ミクmetal.pmd"));
 	//model.reset(new PMDModel("Model/hibiki/我那覇響v1.pmd"));
 	//pmxmodel.reset(new PMXModel("model/レム/Rem.pmx"));
 
@@ -1048,7 +1048,6 @@ DX12Init::Draw() {
 	_commandList->IASetVertexBuffers(0, 1, &vbView);
 	_commandList->IASetIndexBuffer(&indexView);
 
-	//_commandList->DrawIndexedInstanced(indexView.SizeInBytes, 1, 0, 0, 0);
 
 	//頂点描画
 	unsigned int offset = 0;
@@ -1062,12 +1061,18 @@ DX12Init::Draw() {
 		offset += mat.vertexCount;
 	}
 
+	////頂点描画
+	//unsigned int offset = 0;
+	////auto handle = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
+	////const auto increment_size = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	////_commandList->SetDescriptorHeaps(1, materialDescHeap.GetAddressOf());
+	//for (auto& mat : pmxmodel->GetMaterials()) {
+	//	//_commandList->SetGraphicsRootDescriptorTable(1,handle);
+	//	//handle.ptr += increment_size * 5;
+	//	_commandList->DrawIndexedInstanced(mat.indices, 1, offset, 0, 0);
+	//	offset += mat.indices;
+	//}
 
-
-	/*for (auto& mat : model->GetMaterials()) {
-		_commandList->SetGraphicsRootDescriptorTable(1, handle);
-		handle.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	}*/
 
 	ResourceBarrier(renderTarget, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
