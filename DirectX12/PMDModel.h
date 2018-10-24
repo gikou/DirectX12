@@ -56,6 +56,13 @@ struct IKData {
 };
 
 #pragma pack()
+
+
+struct PMDTexturePath {
+	std::string normal;
+	std::string sphir;
+};
+
 class PMDModel
 {
 private:
@@ -63,8 +70,9 @@ private:
 	std::vector<PMDVertex> vertices;
 	std::vector<unsigned short> indices;
 	std::vector<PMDMaterial> materials;
-	std::vector<std::string> texturePath;
+	std::vector<PMDTexturePath> texturePath;
 	std::array<char[100], 10> toonTexNames;
+	std::vector<PMDBone> bones;
 public:
 	PMDModel(const char* file);
 	~PMDModel();
@@ -72,8 +80,9 @@ public:
 	std::vector<PMDVertex> GetVertices();
 	std::vector<unsigned short> GetIndices(); 
 	std::vector<PMDMaterial> GetMaterials();
-	std::vector<std::string> GetTexturePath();
+	std::vector<PMDTexturePath> GetTexturePath();
 	std::array<char[100], 10> GetToonTexNames();
+	std::vector<PMDBone> GetBones();
 	std::string GetModelFolder();
 };
 

@@ -3,6 +3,39 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
+#include<assert.h>
+
+std::string GetCombinedPathFromPath(const char* modelPath, int index) {
+	//std::string strTexPath = texPath;
+	std::string strFilelPath = modelPath;
+
+	int pathIndex1 = strFilelPath.rfind('/');
+	int pathIndex2 = strFilelPath.rfind('\\');
+	int pathIndex = (pathIndex1 > pathIndex2) ? pathIndex1 : pathIndex2;
+	std::string folderPath = strFilelPath.substr(0, pathIndex1);
+	folderPath += "/";//最後はセパレータが消えるため(↑の行を pathIndex+1 にしても可) 
+	//folderPath += strTexPath;
+
+	return folderPath;
+}
+
+
+std::string WstringToString(const std::wstring& name) {
+	auto bsize = WideCharToMultiByte(CP_ACP,
+		0,
+		name.data(), -1, nullptr,0,nullptr, nullptr);
+
+	std::string str;
+	str.resize(bsize);
+
+	bsize = WideCharToMultiByte(CP_ACP,
+		0,
+		name.data(), -1,&str[0], str.length(), nullptr, nullptr);
+
+	//assert(bsize-1 == str.length());
+	str = str.substr(0, str.length()-1);
+	return str;
+}
 
 PMXModel::PMXModel(const char* filename)
 {
@@ -85,10 +118,10 @@ PMXModel::PMXModel(const char* filename)
 	std::vector<std::wstring> textures(texsize);
 	for (int i = 0; i < texsize; i++) {
 
-		char textsize = 0;
-		fread(&textsize, sizeof(unsigned char), 4, modelfp);
+		char textsize[4];
+		fread(&textsize[0], sizeof(char), 4, modelfp);
 
-		textures[i].resize(textsize / 2);
+		textures[i].resize(textsize[0]/2);
 		fread(&textures[i][0], textures[i].size(), 2, modelfp);
 	}
 
@@ -99,14 +132,15 @@ PMXModel::PMXModel(const char* filename)
 	toonTextures.resize(materialsize);
 	int i = 0;
 	for (auto& mat : materials) {
-		char textsize = 0;
-		fread(&textsize, sizeof(char), 4, modelfp);
-		mat.name.resize(textsize /2);
-
+		char textsize[4];
+		fread(&textsize[0], sizeof(char), 4, modelfp);
+		mat.name.resize(textsize[0]/2);
 		fread(&mat.name[0], mat.name.size(), 2, modelfp);
-		fread(&textsize, sizeof(char), 4, modelfp);
-		mat.engName.resize(textsize/2);
+
+		fread(&textsize[0], sizeof(char), 4, modelfp);
+		mat.engName.resize(textsize[0]/2);
 		fread(&mat.engName, mat.engName.size(), 2, modelfp);
+
 		fread(&mat.diffuse, sizeof(mat.diffuse), 1, modelfp);
 		fread(&mat.specular, sizeof(mat.specular), 1, modelfp);
 		fread(&mat.specularity, sizeof(mat.specularity), 1, modelfp);
@@ -128,16 +162,23 @@ PMXModel::PMXModel(const char* filename)
 		else {
 			fread(&mat.toonIndex, sizeof(mat.toonIndex), 1, modelfp);
 		}
-		textsize = 0;
-		fread(&textsize, sizeof(char), 4, modelfp);
-		mat.comment.resize(textsize/2);
+		fread(&textsize[0], sizeof(char), 4, modelfp);
+		mat.comment.resize(textsize[0] /2);
 		fread(&mat.comment[0], mat.comment.size(), 2, modelfp);
 		fread(&mat.indices, sizeof(mat.indices), 1, modelfp);
-		unsigned char nazo = 0;
-		fread(&nazo, sizeof(nazo), 2, modelfp);
+		char nazo[2];
+		fread(&nazo[0], sizeof(char), 2, modelfp);
 		i++;
 	}
-	
+	texturePath.resize(materialsize);
+	for (int i = 0; i < materialsize; ++i) {
+		if (materials[i].normalTexIndex != 0xff) {
+			texturePath[i].normal = WstringToString(textures[materials[i].normalTexIndex]);
+		}
+		if (materials[i].sphirTexIndex != 0xff) {
+			texturePath[i].sphir = WstringToString(textures[materials[i].sphirTexIndex]);
+		}
+	}
 	fclose(modelfp);
 	
 }
@@ -160,4 +201,9 @@ PMXModel::GetIndices() {
 std::vector<PMXMaterial>
 PMXModel::GetMaterials() {
 	return materials;
+}
+
+std::vector<TexturePath> 
+PMXModel::GetTexturePath() {
+	return texturePath;
 }

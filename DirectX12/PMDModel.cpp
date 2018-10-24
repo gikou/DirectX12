@@ -66,15 +66,23 @@ PMDModel::ModelLoader() {
 	int i = 0;
 	texturePath.resize(materialNum);
 	for (auto mat : materials) {
-		if (strlen(mat.textureFilePath) > 0) {
-			texturePath[i] = GetCombinedPathFrom2Path(folderPath, mat.textureFilePath);
+
+		std::string a = mat.textureFilePath;
+		int size = a.find(".");
+		std::string exit = a.substr(size + 1, a.size());
+
+		if (exit == "bmp" || exit == "jpg" || exit == "png"|| exit == "tga") {
+			texturePath[i].normal = GetCombinedPathFrom2Path(folderPath, mat.textureFilePath);
+		}
+		if (exit == "spa"|| exit == "sph") {
+			texturePath[i].sphir = GetCombinedPathFrom2Path(folderPath, mat.textureFilePath);
 		}
 		i++;
 	}
 	unsigned short bonenum = 0;
 	fread(&bonenum, sizeof(unsigned short), 1, modelfp);
 
-	std::vector<PMDBone> bones(bonenum);
+	bones.resize(bonenum);
 	fread(&bones[0], sizeof(PMDBone), bonenum, modelfp);
 
 	unsigned short iknum = 0;
@@ -153,7 +161,7 @@ PMDModel::GetMaterials() {
 	return materials;
 }
 
-std::vector<std::string>
+std::vector<PMDTexturePath>
 PMDModel::GetTexturePath() {
 	return texturePath;
 }
@@ -161,6 +169,11 @@ PMDModel::GetTexturePath() {
 std::array<char[100], 10> 
 PMDModel::GetToonTexNames() {
 	return toonTexNames;
+}
+
+std::vector<PMDBone> 
+PMDModel::GetBones() {
+	return bones;
 }
 
 std::string 

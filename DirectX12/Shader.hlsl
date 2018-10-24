@@ -18,41 +18,54 @@ cbuffer material : register(b1) {
 	float4 ambient;//アンビエント 
 }
 
+cbuffer bones : register(b2) { 
+    matrix boneMats[512]; 
+} 
+
 struct Out
 {
 	float4 svpos : SV_POSITION;
-	float4 pos : POSITION;
+	float4 pos : POSITION0;
 	float2 uv : TEXCOORD;
 	float4 normal:NORMAL;
+    float3 weight : WEIGHT;
 };
 
-Out BasicVS(float4 pos : POSITION, float4 normal : NORMAL, float2 uv : TEXCOORD)
+Out BasicVS(float4 pos : POSITION, float4 normal : NORMAL, float2 uv : TEXCOORD, min16uint2 boneno : BONENO, min16uint weight : WEIGHT)
 {
 	Out o;
+
+    float w = weight / 100.0f;
+    o.weight = float3(w, 1 - w, 0);
+    matrix m = boneMats[boneno.x] * w + boneMats[boneno.y] * (1 - w);
+    //pos = mul(m, pos);
+
 	pos = mul(mul(viewproj, world), pos);
 	o.svpos = pos;
 	o.pos = pos;
     o.uv = uv;
-    o.normal = mul(world, normal);
+    o.normal = mul(world, mul(m, normal));
 	return o;
 }
 
 float4 BasicPS(Out o) : SV_TARGET
 {
-    //return clut.Sample(smp, o.uv);
+    //return spa.Sample(smp, o.uv);
     //return float4(1, 1, 1, 1);
 	//
-    
+    //return float4(o.weight, 1);
     float3 lightcol = (0.6f, 0.6f, 0.6f);
 
     float3 eye = peye.xyz;
     float3 ray = normalize(o.pos.xyz - eye);
 	float3 light = normalize(float3(-1,1,-1));//光源へのベクトル(平行光源) 
-	float3 ref = reflect(-light, o.normal.rgb);
+    float3 ref = reflect(-light, o.normal.rgb);
     float spec = saturate(dot(pow(ref, ray), specular.a));
     float brightness = dot(light, o.normal.xyz);
-    //brightness = saturate(acos(brightness) / 3.14);
-   // return float4(brightness, brightness, brightness, 1);
+    brightness = saturate(acos(brightness) / 3.14);
+    //return float4(brightness, brightness, brightness, 1);
+   //return modelTex.Sample(smp, o.uv) * float4(brightness * diffuse.rgb + specular.rgb * spec + ambient.rgb, diffuse.a);
+
     float3 vray = normalize(eye - o.pos.xyz );
 
     float3 up = float3(0, 1, 0);
@@ -62,15 +75,18 @@ float4 BasicPS(Out o) : SV_TARGET
     float2 uv = float2(dot(o.normal.xyz, right), dot(o.normal.xyz, up));
     uv = float2(0.5f, -0.5f) * (uv + float2(1.0f, -1.0f));
 
-   // return sph.Sample(smp, uv);
+    return sph.Sample(smp, uv);
 
-    float3 tooncol = clut.Sample(smp, float2(0, 1.0-brightness));
+    float3 tooncol = clut.Sample(smp, float2(0, brightness));
     float3 spacol = spa.Sample(smp, uv);
     float3 sphcol = sph.Sample(smp, uv);
     float3 texcol = modelTex.Sample(smp, o.uv);
     float3 matcol = tooncol.rgb * diffuse.rgb + specular.rgb * spec + ambient.rgb * lightcol;
 
     float3 col = spacol.rgb + sphcol.rgb * texcol.rgb * matcol.rgb;
+
+ 
+
     return float4(col,diffuse.a);
     //return float4(modelTex.Sample(smp, o.uv).rgb * diffuse, 1);
 	//float3 color = (exitTex==1) ? tex.Sample(smp, o.uv).rgb : diffuse;

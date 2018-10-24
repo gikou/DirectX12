@@ -72,6 +72,11 @@ struct PMXMaterial {
 	unsigned short indices;
 };
 
+struct TexturePath {
+	std::string normal;
+	std::string sphir;
+};
+
 #pragma pack(0)
 
 class PMXModel
@@ -81,6 +86,7 @@ private:
 	std::vector<unsigned short> indices;
 	std::vector<std::wstring> texture;
 	std::vector<PMXMaterial> materials;
+	std::vector<TexturePath> texturePath;
 	std::vector<std::wstring> toonTextures;
 public:
 	PMXModel(const char* filename);
@@ -89,5 +95,6 @@ public:
 	std::vector<PMXVertex> GetVertices();
 	std::vector<unsigned short> GetIndices();
 	std::vector<PMXMaterial> GetMaterials();
+	std::vector<TexturePath> GetTexturePath();
 };
 
