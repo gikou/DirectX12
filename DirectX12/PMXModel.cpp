@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 #include<assert.h>
+#include<sstream>
+#include <iomanip>
 
 std::string GetCombinedPathFromPath(const char* modelPath, int index) {
 	//std::string strTexPath = texPath;
@@ -129,7 +131,6 @@ PMXModel::PMXModel(const char* filename)
 	fread(&materialsize, sizeof(unsigned int), 1, modelfp);
 
 	materials.resize(materialsize);
-	toonTextures.resize(materialsize);
 	int i = 0;
 	for (auto& mat : materials) {
 		char textsize[4];
@@ -179,6 +180,17 @@ PMXModel::PMXModel(const char* filename)
 			texturePath[i].sphir = WstringToString(textures[materials[i].sphirTexIndex]);
 		}
 	}
+
+	toonPath.resize(materialsize);
+	for (int i = 0; i < materialsize; ++i) {
+		if (materials[i].toonFlag) {
+				std::ostringstream os;
+				os << "toon/toon" << std::setw(2) << std::setfill('0') << materials[i].toonIndex + 1 << ".bmp";
+				toonPath[i] = os.str();
+		}
+
+	}
+
 	fclose(modelfp);
 	
 }
@@ -206,4 +218,9 @@ PMXModel::GetMaterials() {
 std::vector<TexturePath> 
 PMXModel::GetTexturePath() {
 	return texturePath;
+}
+
+std::vector<std::string>
+PMXModel::GetToonPath() {
+	return toonPath;
 }

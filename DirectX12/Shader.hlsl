@@ -12,15 +12,16 @@ cbuffer mat : register(b0) {
     float4 peye;
 }
 
-cbuffer material : register(b1) {
-	float4 diffuse;//基本色(拡散反射色) 
-	float4 specular;//スペキュラ(反射色) 
-	float4 ambient;//アンビエント 
+cbuffer material : register(b1)
+{
+    float4 diffuse; //基本色(拡散反射色) 
+    float4 specular; //スペキュラ(反射色) 
+    float4 ambient; //アンビエント 
 }
 
-cbuffer bones : register(b2) { 
-    matrix boneMats[512]; 
-} 
+//cbuffer bones : register(b2) { 
+//    matrix boneMats[512]; 
+//} 
 
 struct Out
 {
@@ -35,26 +36,26 @@ Out BasicVS(float4 pos : POSITION, float4 normal : NORMAL, float2 uv : TEXCOORD,
 {
 	Out o;
 
-    float w = weight / 100.0f;
-    o.weight = float3(w, 1 - w, 0);
-    matrix m = boneMats[boneno.x] * w + boneMats[boneno.y] * (1 - w);
+    //float w = weight / 100.0f;
+    //matrix m = boneMats[boneno.x] * w + boneMats[boneno.y] * (1 - w);
     //pos = mul(m, pos);
 
 	pos = mul(mul(viewproj, world), pos);
 	o.svpos = pos;
 	o.pos = pos;
     o.uv = uv;
-    o.normal = mul(world, mul(m, normal));
+    o.normal = mul(world, normal);
 	return o;
 }
 
 float4 BasicPS(Out o) : SV_TARGET
 {
+    
     //return spa.Sample(smp, o.uv);
     //return float4(1, 1, 1, 1);
 	//
     //return float4(o.weight, 1);
-    float3 lightcol = (0.6f, 0.6f, 0.6f);
+    float3 lightcol = (0.4f, 0.4f, 0.4f);
 
     float3 eye = peye.xyz;
     float3 ray = normalize(o.pos.xyz - eye);
@@ -75,7 +76,7 @@ float4 BasicPS(Out o) : SV_TARGET
     float2 uv = float2(dot(o.normal.xyz, right), dot(o.normal.xyz, up));
     uv = float2(0.5f, -0.5f) * (uv + float2(1.0f, -1.0f));
 
-    return sph.Sample(smp, uv);
+//    return sph.Sample(smp, uv);
 
     float3 tooncol = clut.Sample(smp, float2(0, brightness));
     float3 spacol = spa.Sample(smp, uv);
@@ -83,9 +84,7 @@ float4 BasicPS(Out o) : SV_TARGET
     float3 texcol = modelTex.Sample(smp, o.uv);
     float3 matcol = tooncol.rgb * diffuse.rgb + specular.rgb * spec + ambient.rgb * lightcol;
 
-    float3 col = spacol.rgb + sphcol.rgb * texcol.rgb * matcol.rgb;
-
- 
+    float3 col =/* spacol.rgb +*/ sphcol.rgb * texcol.rgb * matcol.rgb;
 
     return float4(col,diffuse.a);
     //return float4(modelTex.Sample(smp, o.uv).rgb * diffuse, 1);

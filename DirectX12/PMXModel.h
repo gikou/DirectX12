@@ -87,7 +87,7 @@ private:
 	std::vector<std::wstring> texture;
 	std::vector<PMXMaterial> materials;
 	std::vector<TexturePath> texturePath;
-	std::vector<std::wstring> toonTextures;
+	std::vector<std::string> toonPath;
 public:
 	PMXModel(const char* filename);
 	~PMXModel();
@@ -96,5 +96,6 @@ public:
 	std::vector<unsigned short> GetIndices();
 	std::vector<PMXMaterial> GetMaterials();
 	std::vector<TexturePath> GetTexturePath();
+	std::vector<std::string> GetToonPath();
 };
 
