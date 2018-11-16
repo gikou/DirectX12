@@ -7,8 +7,8 @@
 #include<sstream>
 #include <iomanip>
 
-std::string GetCombinedPathFromPath(const char* modelPath, int index) {
-	//std::string strTexPath = texPath;
+std::string GetCombinedPathFromPath(const char* modelPath, std::string texPath) {
+	std::string strTexPath = texPath;
 	std::string strFilelPath = modelPath;
 
 	int pathIndex1 = strFilelPath.rfind('/');
@@ -18,7 +18,7 @@ std::string GetCombinedPathFromPath(const char* modelPath, int index) {
 	folderPath += "/";//最後はセパレータが消えるため(↑の行を pathIndex+1 にしても可) 
 	//folderPath += strTexPath;
 
-	return folderPath;
+	return folderPath + strTexPath;
 }
 
 
@@ -59,6 +59,9 @@ PMXModel::PMXModel(const char* filename)
 	unsigned int size = 0;
 	fread(&size, sizeof(unsigned int), 1, modelfp);
 
+	name.resize(size);
+	fread(&name[0], name.size(), 1, modelfp);
+
 	unsigned int commentsize = 0;
 	fread(&commentsize, sizeof(unsigned int), 1, modelfp);
 
@@ -66,8 +69,12 @@ PMXModel::PMXModel(const char* filename)
 	comment.resize(commentsize);
 	fread(&comment[0], comment.size(), 1, modelfp);
 
+	fread(&commentsize, sizeof(unsigned int), 1, modelfp);
 
-	fread(&size, sizeof(unsigned int), 1, modelfp);
+	comment.resize(commentsize);
+	fread(&comment[0], comment.size(), 1, modelfp);
+
+	//fread(&size, sizeof(unsigned int), 1, modelfp);
 	
 	unsigned int vertexsize = 0;
 	fread(&vertexsize, sizeof(unsigned int), 1, modelfp);
@@ -106,12 +113,13 @@ PMXModel::PMXModel(const char* filename)
 
 	}
 
-
+	
 	unsigned int indexsize = 0;
 	fread(&indexsize, sizeof(unsigned int), 1, modelfp);
 
 	indices.resize(indexsize);
 	fread(&indices[0], sizeof(unsigned short)* indexsize, 1, modelfp);
+
 
 	unsigned int texsize = 0;
 	fread(&texsize, sizeof(unsigned int), 1, modelfp);
@@ -120,10 +128,10 @@ PMXModel::PMXModel(const char* filename)
 	std::vector<std::wstring> textures(texsize);
 	for (int i = 0; i < texsize; i++) {
 
-		char textsize[4];
-		fread(&textsize[0], sizeof(char), 4, modelfp);
+		unsigned int textsize;
+		fread(&textsize, sizeof(unsigned int), 1, modelfp);
 
-		textures[i].resize(textsize[0]/2);
+		textures[i].resize(textsize/2);
 		fread(&textures[i][0], textures[i].size(), 2, modelfp);
 	}
 
@@ -133,14 +141,14 @@ PMXModel::PMXModel(const char* filename)
 	materials.resize(materialsize);
 	int i = 0;
 	for (auto& mat : materials) {
-		char textsize[4];
-		fread(&textsize[0], sizeof(char), 4, modelfp);
-		mat.name.resize(textsize[0]/2);
+		unsigned int size;
+		fread(&size, sizeof(unsigned int), 1, modelfp);
+		mat.name.resize(size/2);
 		fread(&mat.name[0], mat.name.size(), 2, modelfp);
 
-		fread(&textsize[0], sizeof(char), 4, modelfp);
-		mat.engName.resize(textsize[0]/2);
-		fread(&mat.engName, mat.engName.size(), 2, modelfp);
+		fread(&size, sizeof(unsigned int), 1, modelfp);
+		mat.engName.resize(size/2);
+		fread(&mat.engName[0], mat.engName.size(), 2, modelfp);
 
 		fread(&mat.diffuse, sizeof(mat.diffuse), 1, modelfp);
 		fread(&mat.specular, sizeof(mat.specular), 1, modelfp);
@@ -163,21 +171,19 @@ PMXModel::PMXModel(const char* filename)
 		else {
 			fread(&mat.toonIndex, sizeof(mat.toonIndex), 1, modelfp);
 		}
-		fread(&textsize[0], sizeof(char), 4, modelfp);
-		mat.comment.resize(textsize[0] /2);
+		fread(&size, sizeof(unsigned int), 1, modelfp);
+		mat.comment.resize(size);
 		fread(&mat.comment[0], mat.comment.size(), 2, modelfp);
 		fread(&mat.indices, sizeof(mat.indices), 1, modelfp);
-		char nazo[2];
-		fread(&nazo[0], sizeof(char), 2, modelfp);
 		i++;
 	}
 	texturePath.resize(materialsize);
 	for (int i = 0; i < materialsize; ++i) {
 		if (materials[i].normalTexIndex != 0xff) {
-			texturePath[i].normal = WstringToString(textures[materials[i].normalTexIndex]);
+			texturePath[i].normal = GetCombinedPathFromPath(filename,WstringToString(textures[materials[i].normalTexIndex]));
 		}
 		if (materials[i].sphirTexIndex != 0xff) {
-			texturePath[i].sphir = WstringToString(textures[materials[i].sphirTexIndex]);
+			texturePath[i].sphir = GetCombinedPathFromPath(filename, WstringToString(textures[materials[i].sphirTexIndex]));
 		}
 	}
 
@@ -205,7 +211,7 @@ std::vector<PMXVertex>
 PMXModel::GetVertices() {
 	return verteices;
 }
-std::vector<unsigned short> 
+std::vector<unsigned short>
 PMXModel::GetIndices() {
 	return indices;
 }

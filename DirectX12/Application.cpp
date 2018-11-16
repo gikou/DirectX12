@@ -75,10 +75,10 @@ Application::Run(HWND hwnd) {
 	}
 	dx12.reset();
 
-	ID3D12DebugDevice* debugInterface = nullptr;
+	/*ID3D12DebugDevice* debugInterface = nullptr;
 	result = device->QueryInterface(&debugInterface);
 	debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
-	Release(debugInterface);
+	Release(debugInterface);*/
 
 	return true;
 }

@@ -3,6 +3,9 @@
 #include<array>
 #include<DirectXMath.h>
 
+
+
+
 using namespace DirectX;
 #pragma pack(1)
 struct PMDHeader
@@ -30,10 +33,10 @@ struct PMDMaterial {
 	float alpha;//;アルファ色 
 	float specularity;//スペキュラ強さ 
 	XMFLOAT3 specular;//スペキュラ(反射色) 
-	XMFLOAT3 mirror;//アンビエント 
+	XMFLOAT3 ambient;//アンビエント 
 	unsigned char toonIdx;//トゥーんのインデックス 
 	unsigned char edgeFlg;//輪郭線フラグ 
-	unsigned int vertexCount;//vertexCountだけどインデックス数 
+	unsigned int indices;//vertexCountだけどインデックス数 
 	char textureFilePath[20];//テクスチャがあるときテクスチャパス 
 };
 
@@ -54,8 +57,8 @@ struct IKData {
 	float weigth;
 	unsigned short childBoneIndex[5];
 };
-
 #pragma pack()
+
 
 
 struct PMDTexturePath {

@@ -16,6 +16,8 @@ class Dx12BufferManager;
 class PMDModel;
 class PMXModel;
 class LoadMotion;
+
+
 //ワールドビュープロジェクトの構造体
 struct BaseMatrixes {
 	DirectX::XMMATRIX world;//ワールド 
@@ -48,6 +50,8 @@ private:
 
 
 	unsigned char* pData;
+	unsigned char* _1stData;
+	unsigned char* _2ndData;
 	//DirectX12初期化変数
 	ComPtr<IDXGIFactory4> factory;
 	ComPtr<ID3D12Device> device;
@@ -88,6 +92,7 @@ private:
 	std::vector<ComPtr<ID3D12Resource>> toonTextureBuffer;
 	ComPtr<ID3D12Resource> whiteTexBuffer;
 	ComPtr<ID3D12Resource> blackTexBuffer;
+	ComPtr<ID3D12Resource> normalTexBuffer;
 
 	//マテリアル用
 	std::vector<ComPtr<ID3D12Resource>> _materialsBuffer;
@@ -102,13 +107,39 @@ private:
 	std::vector<DirectX::XMMATRIX> boneMatrices;//ボーン行列転送用
 	std::map<std::string, BoneNode> boneMap;
 	std::shared_ptr<LoadMotion> motion;
+
+	ComPtr<ID3D12DescriptorHeap> _1stHeapRTV;
+	ComPtr<ID3D12DescriptorHeap> _1stHeapSRV;
+	ComPtr<ID3D12Resource> _1stPathBuffer;
+
+	ComPtr<ID3D12DescriptorHeap> _2ndHeapRTV;
+	ComPtr<ID3D12DescriptorHeap> _2ndHeapSRV;
+	ComPtr<ID3D12Resource> _2ndPathBuffer;
+
+	D3D12_VERTEX_BUFFER_VIEW _1stCanvasView;
+	D3D12_VERTEX_BUFFER_VIEW _2ndCanvasView;
+	ComPtr<ID3D12Resource> canvas1stBuffer;
+	ComPtr<ID3D12Resource> canvas2ndBuffer;
+	ComPtr<ID3D12RootSignature> _1stPathRootSignature;
+	ComPtr<ID3D12PipelineState> _1stPathPipelineState;
+	ComPtr<ID3D12RootSignature> _2ndPathRootSignature;
+	ComPtr<ID3D12PipelineState> _2ndPathPipelineState;
+	ComPtr<ID3D12DescriptorHeap> gauss1stDescHeap;
+	ComPtr<ID3D12Resource> gauss1stBuffer;
+	DirectX::XMFLOAT4* gauss1stMap;
+	ComPtr<ID3D12DescriptorHeap> gauss2ndDescHeap;
+	ComPtr<ID3D12Resource> gauss2ndBuffer;
+	DirectX::XMFLOAT4* gauss2ndMap;
 	HRESULT CreateDevice();
 	HRESULT CreateCommand();
 	HRESULT CreateFence();
 	HRESULT CreateSwapChain();
 	HRESULT CreateRenderTarget();
-	HRESULT CreateRootSgnature();
-	HRESULT CretaeTexture();
+	HRESULT Create1stPathRTVSRV();
+	HRESULT Create2ndPathRTVSRV();
+	HRESULT CreateRootSgnature(); 
+	HRESULT Create1stPathRootSgnature();
+	HRESULT Create2ndPathRootSgnature();
 	HRESULT CretaeToonTexture();
 	HRESULT CreateModelTextures();
 	void CreateWhiteTexBuffer();
@@ -117,6 +148,9 @@ private:
 	HRESULT CreateShader();
 	HRESULT CreateVertex();
 	HRESULT CreateIndeis();
+	HRESULT Create1stPathCanvasPorigonn();
+	HRESULT Create2ndPathCanvasPorigonn();
+	HRESULT CreateCanvasBuffer();
 	HRESULT CreateConstantBuffer();
 	HRESULT CreateMaterialBuffer();
 	HRESULT CreateBone();
@@ -126,7 +160,12 @@ private:
 	HRESULT Wait();
 	void ClearRenderTarget(unsigned int bbindex);
 	void RecursiveMatrixMultiply(BoneNode& node, DirectX::XMMATRIX& inMat);
-	void BendBone(const char* name, DirectX::XMMATRIX matrix);
+	void BendBone(const char* name, DirectX::XMFLOAT4& q,DirectX::XMFLOAT3& loc, const DirectX::XMFLOAT4& q2, float t);
+	void MotionUpdate(int frameNo);
+	void CameraOperation(const char keyState);
+	ComPtr<ID3D12CommandAllocator> bundleAllocator;
+	ComPtr<ID3D12GraphicsCommandList> bundleList;
+	void CreateModelDrawBundle();
 public:
 	DX12Init(HWND hwnd, ID3D12Device* device);
 	~DX12Init();

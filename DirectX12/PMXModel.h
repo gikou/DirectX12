@@ -58,6 +58,7 @@ struct PMXMaterial {
 	std::wstring name;
 	std::wstring engName;
 	DirectX::XMFLOAT4 diffuse;
+	//float alpha;
 	DirectX::XMFLOAT3 specular;
 	float specularity;
 	DirectX::XMFLOAT3 ambient;
@@ -69,13 +70,15 @@ struct PMXMaterial {
 	unsigned char toonFlag;
 	unsigned char toonIndex;
 	std::wstring comment;
-	unsigned short indices;
+	unsigned int indices;
 };
 
 struct TexturePath {
 	std::string normal;
 	std::string sphir;
 };
+
+
 
 #pragma pack(0)
 

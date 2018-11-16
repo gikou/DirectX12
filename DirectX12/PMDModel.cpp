@@ -83,6 +83,7 @@ PMDModel::ModelLoader() {
 	fread(&bonenum, sizeof(unsigned short), 1, modelfp);
 
 	bones.resize(bonenum);
+
 	fread(&bones[0], sizeof(PMDBone), bonenum, modelfp);
 
 	unsigned short iknum = 0;
