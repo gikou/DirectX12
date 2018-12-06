@@ -1,20 +1,8 @@
-#include <Windows.h>	//ウィンドウ表示するのに必要
 #include "Application.h"
-#include <d3d12.h>		//DirectX12を使うのに必要
-#include "d3dx12.h"
-#include <dxgi1_4.h>	//DXGIを扱うのに必要(DX12ではDXGI1.4が使われてる)
-#include <D3Dcompiler.h>//シェーダコンパイラで必要
-#include <DirectXMath.h>//数学系の便利なのが入ってるヘッダ
-#include <tchar.h>
-#include <vector>
-#include <memory>
-#include <wrl/client.h>
-
 #include"DX12Init.h"
 
-#pragma comment(lib,"d3d12.lib")
-#pragma comment(lib,"dxgi.lib")
-#pragma comment(lib, "d3dcompiler.lib")
+
+
 
 //頂点構造体
 struct Vertex {
@@ -61,7 +49,8 @@ Application::Run(HWND hwnd) {
 
 	ID3D12Device* device = nullptr;
 	std::shared_ptr<DX12Init> dx12;
-	dx12.reset(new DX12Init(hwnd, device));
+	dx12.reset(new DX12Init());
+	dx12->Dx12SetInit(hwnd, device);
 	dx12->Initialize();
 	device = dx12->GetDevice();
 	//ループ
@@ -74,11 +63,10 @@ Application::Run(HWND hwnd) {
 		dx12->Draw();
 	}
 	dx12.reset();
-
-	/*ID3D12DebugDevice* debugInterface = nullptr;
+	ID3D12DebugDevice* debugInterface = nullptr;
 	result = device->QueryInterface(&debugInterface);
 	debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
-	Release(debugInterface);*/
+	Release(debugInterface);
 
 	return true;
 }

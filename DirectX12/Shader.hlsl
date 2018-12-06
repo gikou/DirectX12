@@ -9,6 +9,7 @@ SamplerState smp:register(s0);
 cbuffer mat : register(b0) {
 	float4x4 world;
 	float4x4 viewproj;
+    float4x4 ligth;
     float4 peye;
 }
 
@@ -41,8 +42,10 @@ Out BasicVS(float4 pos : POSITION, float4 normal : NORMAL, float2 uv : TEXCOORD,
     matrix m = boneMats[boneno.x] * w + boneMats[boneno.y] * (1 - w);
     pos = mul(m, pos);
 
-	pos = mul(mul(viewproj, world), pos);
-	o.svpos = pos;
+	
+    o.svpos = mul(mul(viewproj, world), pos);
+    pos = mul(mul(viewproj, world), pos);
+	//o.svpos = pos;
 	o.pos = pos;
     o.uv = uv;
     o.normal = mul(world, normal);
@@ -62,10 +65,10 @@ float4 BasicPS(Out o) : SV_TARGET
 
     float3 eye = peye.xyz;
     float3 ray = normalize(o.pos.xyz - eye);
-	float3 light = normalize(float3(-1,1,-1));//光源へのベクトル(平行光源) 
-    float3 ref = reflect(-light, o.normal.rgb);
+	float3 light = normalize(float3(-1,1,1));//光源へのベクトル(平行光源) 
+    float3 ref = reflect(light, o.normal.rgb);
     float spec = saturate(pow(dot(ref, ray), specular.a));
-    float brightness = dot(light, o.normal.xyz);
+    float brightness = dot(-light, o.normal.xyz);
     brightness = saturate(acos(brightness) / 3.14);
    //return float4(brightness, brightness, brightness, 1);
   // return modelTex.Sample(smp, o.uv) * float4(brightness * diffuse.rgb + specular.rgb * spec + ambient.rgb, diffuse.a);

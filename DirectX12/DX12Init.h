@@ -16,12 +16,16 @@ class Dx12BufferManager;
 class PMDModel;
 class PMXModel;
 class LoadMotion;
+class CreateRootSignature;
+class PrimitiveCreator;
 
+class RootSignature;
 
 //ワールドビュープロジェクトの構造体
 struct BaseMatrixes {
 	DirectX::XMMATRIX world;//ワールド 
 	DirectX::XMMATRIX viewproj;//ビュープロジェ 
+	DirectX::XMMATRIX ligth;
 	DirectX::XMFLOAT4 eye;
 };
 //マテリアル情報構造体
@@ -41,13 +45,15 @@ struct BoneNode {
 class DX12Init
 {
 private:
-	HRESULT result;
+
+
 	HWND _hwnd;
 	
 
+	std::shared_ptr<PrimitiveCreator> primitive;
+	std::shared_ptr<CreateRootSignature> rootsignater;
 	
 	Material* mapped;
-
 
 	unsigned char* pData;
 	unsigned char* _1stData;
@@ -66,13 +72,16 @@ private:
 	ComPtr<ID3D12RootSignature> rootSignature;
 	ComPtr<ID3D12PipelineState> pipelineState;
 
+	std::map<std::string, RootSignature> rootSignatures;
+
+
 	//WVP用
 	BaseMatrixes* matrixAddress;
 	DirectX::XMFLOAT3 eye;
 	DirectX::XMFLOAT3 target;
 	DirectX::XMMATRIX camera;
 	DirectX::XMMATRIX projection;
-	ComPtr<ID3D12DescriptorHeap> registerDescHeap;	//テクスチャだったり、、、定数バッファだったり、、、
+	ComPtr<ID3D12DescriptorHeap> registerDescHeap;	
 	ComPtr<ID3D12Resource> _constantBuffer;
 
 	//深度バッファ用
@@ -110,6 +119,7 @@ private:
 
 	ComPtr<ID3D12DescriptorHeap> _1stHeapRTV;
 	ComPtr<ID3D12DescriptorHeap> _1stHeapSRV;
+	ComPtr<ID3D12DescriptorHeap> _1stHeapDSV;
 	ComPtr<ID3D12Resource> _1stPathBuffer;
 
 	ComPtr<ID3D12DescriptorHeap> _2ndHeapRTV;
@@ -130,35 +140,45 @@ private:
 	ComPtr<ID3D12DescriptorHeap> gauss2ndDescHeap;
 	ComPtr<ID3D12Resource> gauss2ndBuffer;
 	DirectX::XMFLOAT4* gauss2ndMap;
-	HRESULT CreateDevice();
-	HRESULT CreateCommand();
-	HRESULT CreateFence();
-	HRESULT CreateSwapChain();
-	HRESULT CreateRenderTarget();
-	HRESULT Create1stPathRTVSRV();
-	HRESULT Create2ndPathRTVSRV();
-	HRESULT CreateRootSgnature(); 
-	HRESULT Create1stPathRootSgnature();
-	HRESULT Create2ndPathRootSgnature();
-	HRESULT CretaeToonTexture();
-	HRESULT CreateModelTextures();
+
+	//shadow
+	ComPtr<ID3D12DescriptorHeap> shadowHeapDSV;
+	ComPtr<ID3D12DescriptorHeap> shadowHeapSRV;
+	ComPtr<ID3D12Resource> shadowBuffer;
+	ComPtr<ID3D12RootSignature> shadowRootSignature;
+	ComPtr<ID3D12PipelineState> shadowPipelineState;
+
+	void CreateDevice();
+	void CreateCommand();
+	void CreateFence();
+	void CreateSwapChain();
+	void CreateRenderTarget();
+	void Create1stPathRTVSRV();
+	void Create2ndPathRTVSRV();
+	void CreateRootSgnature(); 
+	void Create1stPathRootSgnature();
+	void Create2ndPathRootSgnature();
+	void CreateShadowRootSgnature();
+	void CretaeToonTexture();
+	void CreateModelTextures();
 	void CreateWhiteTexBuffer();
 	void CreateBlackTexBuffer();
 	std::string GetToon(int index);
-	HRESULT CreateShader();
-	HRESULT CreateVertex();
-	HRESULT CreateIndeis();
-	HRESULT Create1stPathCanvasPorigonn();
-	HRESULT Create2ndPathCanvasPorigonn();
-	HRESULT CreateCanvasBuffer();
-	HRESULT CreateConstantBuffer();
-	HRESULT CreateMaterialBuffer();
-	HRESULT CreateBone();
-	HRESULT CreateBonesBuffer();
-	HRESULT CreateDepth();
-	HRESULT ResourceBarrier(std::vector<ID3D12Resource*> recource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
-	HRESULT Wait();
-	void ClearRenderTarget(unsigned int bbindex);
+	void CreateShader();
+	void CreateVertex();
+	void CreateIndeis();
+	void Create1stPathCanvasPorigonn();
+	void Create2ndPathCanvasPorigonn();
+	void CreateConstantBuffer();
+	void CreateMaterialBuffer();
+	void CreateBone();
+	void CreateBonesBuffer();
+	void CreateDepth();
+	void CreateShadowMap();
+	void DrawLightView();//ライトからの撮影 
+	void ResourceBarrier(std::vector<ID3D12Resource*> recource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+	void Wait();
+	void SetViewAndScissor(unsigned int bbindex, ID3D12DescriptorHeap* heap);
 	void RecursiveMatrixMultiply(BoneNode& node, DirectX::XMMATRIX& inMat);
 	void BendBone(const char* name, DirectX::XMFLOAT4& q,DirectX::XMFLOAT3& loc, const DirectX::XMFLOAT4& q2, float t);
 	void MotionUpdate(int frameNo);
@@ -166,16 +186,23 @@ private:
 	ComPtr<ID3D12CommandAllocator> bundleAllocator;
 	ComPtr<ID3D12GraphicsCommandList> bundleList;
 	void CreateModelDrawBundle();
+	void InputMove();
+	DX12Init(const DX12Init&);
 public:
-	DX12Init(HWND hwnd, ID3D12Device* device);
+	DX12Init();
 	~DX12Init();
+	void Dx12SetInit(HWND hwnd, ID3D12Device* device);
+	static DX12Init& Instance() {
+		static DX12Init dx12;
+		return dx12;
+	}
 
-	HRESULT Initialize();
+	void Initialize();
 	void Draw();
 	void Delete();
 
 	ID3D12Device* GetDevice();
-	
+	ID3D12GraphicsCommandList* GetList();
 
 };
 
