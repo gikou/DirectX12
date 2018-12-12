@@ -1251,11 +1251,14 @@ DX12Init::CreateConstantBuffer() {
 	auto up = XMFLOAT3(0, 1, 0);
 	camera = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 	projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(640) / static_cast<float>(480), 0.1f, 300.0f);
-	XMFLOAT3 toLight = XMFLOAT3( -1,1,-1 );
-	XMVECTOR lightPos = XMLoadFloat3(&toLight) * (XMLoadFloat3(&toLight)- XMLoadFloat3(&eye));
 
+	XMFLOAT3 toLight = XMFLOAT3( -50,30,-50 );
+
+	XMVECTOR lightPos = XMLoadFloat3(&toLight);
+	XMFLOAT3 lPos;
+	XMStoreFloat3(&lPos, lightPos);
 	XMMATRIX lightview = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up));
-	XMMATRIX lightproj = XMMatrixOrthographicLH(40,40, 1.0f, 100.0f);
+	XMMATRIX lightproj = XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
 
 	matrix.world = world;
 	matrix.viewproj = camera * projection;
@@ -1570,6 +1573,7 @@ DX12Init::CreateShadowMap() {
 	device->CreateDescriptorHeap(&shadowmapHD, IID_PPV_ARGS(&shadowHeapDSV));
 
 	shadowmapHD.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;//深度ステンシル 
+	shadowmapHD.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	device->CreateDescriptorHeap(&shadowmapHD, IID_PPV_ARGS(&shadowHeapSRV));
 
 	size_t ssize = max(640, 480);
@@ -1730,16 +1734,48 @@ DX12Init::CreateShadowRootSgnature() {
 
 void 
 DX12Init::DrawLightView() {
-	_commandList->OMSetRenderTargets(1, &shadowHeapDSV->GetCPUDescriptorHandleForHeapStart(), false, &_dsvHeap->GetCPUDescriptorHandleForHeapStart());
-	_commandList->ClearDepthStencilView(_dsvHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0.0f, 0, nullptr);
-	float color[] = { 0.0f,0.0f,0.0f,0.0f };
-	_commandList->ClearRenderTargetView(_1stHeapRTV->GetCPUDescriptorHandleForHeapStart(), color, 0, nullptr);
+	_commandAllocator->Reset();
+	_commandList->Reset(_commandAllocator.Get(), shadowPipelineState.Get());
+	_commandList->SetGraphicsRootSignature(shadowRootSignature.Get());
 
-	_commandList->SetDescriptorHeaps(1, shadowHeapDSV.GetAddressOf());
-	_commandList->SetGraphicsRootDescriptorTable(1, shadowHeapDSV->GetGPUDescriptorHandleForHeapStart());
 
-	_commandList->SetDescriptorHeaps(1, shadowHeapSRV.GetAddressOf());
-	_commandList->SetGraphicsRootDescriptorTable(2, shadowHeapSRV->GetGPUDescriptorHandleForHeapStart());
+	_commandList->OMSetRenderTargets(0, nullptr, false, &shadowHeapDSV->GetCPUDescriptorHandleForHeapStart());
+	_commandList->ClearDepthStencilView(shadowHeapDSV->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0.0f, 0, nullptr);
+	
+	//ビューポートをセット
+	D3D12_VIEWPORT viewPort = {};
+	viewPort.TopLeftX = 0;
+	viewPort.TopLeftY = 0;
+	viewPort.Width = shadowBuffer->GetDesc().Width;
+	viewPort.Height = shadowBuffer->GetDesc().Height;
+	viewPort.MinDepth = 0.0f;
+	viewPort.MaxDepth = 1.0f;
+	_commandList->RSSetViewports(1, &viewPort);
+	//シザーをセット
+	const D3D12_RECT rect = { 0,0, shadowBuffer->GetDesc().Width,  shadowBuffer->GetDesc().Height };
+	_commandList->RSSetScissorRects(1, &rect);
+
+
+	_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	_commandList->IASetVertexBuffers(0, 1, &vbView);
+	_commandList->IASetIndexBuffer(&indexView);
+
+	_commandList->SetDescriptorHeaps(1, boneHeap.GetAddressOf());
+	_commandList->SetGraphicsRootDescriptorTable(1, boneHeap->GetGPUDescriptorHandleForHeapStart());
+
+	_commandList->SetDescriptorHeaps(1, registerDescHeap.GetAddressOf());
+	_commandList->SetGraphicsRootDescriptorTable(0, registerDescHeap->GetGPUDescriptorHandleForHeapStart());
+
+	_commandList->DrawIndexedInstanced(model->GetIndices().size(), 1, 0, 0, 0);
+	
+	_commandList->Close();
+	ID3D12CommandList* command2ndLists[] = { _commandList.Get() };
+	_commandQueue->ExecuteCommandLists(_countof(command2ndLists), command2ndLists);
+
+	Wait();
+
+
 }
 
 void
@@ -1835,6 +1871,9 @@ DX12Init::Initialize() {
 	CreateModelDrawBundle();
 	primitive.reset(new PrimitiveCreator(device.Get()));
 	primitive->Init();
+
+
+	
 	//return result;
 }
 
@@ -1930,9 +1969,15 @@ DX12Init::SetViewAndScissor(unsigned int bbindex, ID3D12DescriptorHeap* heap) {
 
 void
 DX12Init::Draw() {
+	
 	static unsigned int bbIndex = 0;
+	//_commandAllocator->Reset();
+	//_commandList->Reset(_commandAllocator.Get(), pipelineState.Get());
+	DrawLightView();
+
 	_commandAllocator->Reset();
 	_commandList->Reset(_commandAllocator.Get(), pipelineState.Get());
+
 
 	ResourceBarrier(renderTarget, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
@@ -1953,7 +1998,15 @@ DX12Init::Draw() {
 	_commandList->SetDescriptorHeaps(1, materialDescHeap.GetAddressOf());
 	_commandList->ExecuteBundle(bundleList.Get());
 
+
 	primitive->SetPrimitiveDrawMode(_commandList.Get());
+
+	_commandList->SetDescriptorHeaps(1, registerDescHeap.GetAddressOf());
+	_commandList->SetGraphicsRootDescriptorTable(0, registerDescHeap->GetGPUDescriptorHandleForHeapStart());
+
+	_commandList->SetDescriptorHeaps(1, shadowHeapSRV.GetAddressOf());
+	_commandList->SetGraphicsRootDescriptorTable(1, shadowHeapSRV->GetGPUDescriptorHandleForHeapStart());
+
 	primitive->Draw(_commandList.Get());
 
 	_commandList->Close();
@@ -1987,7 +2040,7 @@ DX12Init::Draw() {
 	_commandList->SetDescriptorHeaps(1, _1stHeapDSV.GetAddressOf());
 	_commandList->SetGraphicsRootDescriptorTable(2, _1stHeapDSV->GetGPUDescriptorHandleForHeapStart());
 
-	//三角ポリゴン描画にする
+	//4角ポリゴン描画にする
 	_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	_commandList->IASetVertexBuffers(0, 1, &_1stCanvasView);
 	_commandList->DrawInstanced(4, 1, 0, 0);

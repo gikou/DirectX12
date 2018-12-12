@@ -89,7 +89,6 @@ float4 EffectPS(Output input) : SV_Target
     //b = pow(b, 4);
     //return float4(b, b, b, 1);
     
- 
     //float2 offsetx = float2(14 / input.size.x, 0);
     //float4 ret = tex.Sample(smp, input.uv);
     //ret = ret * wgts[0].x;

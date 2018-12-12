@@ -7,13 +7,14 @@
 #include <D3Dcompiler.h>
 
 #include"Plane.h"
-
+#include"Cube.h"
 #pragma comment(lib, "d3dcompiler.lib")
 
 
 PrimitiveCreator::PrimitiveCreator(ID3D12Device* dev):device(dev)
 {
 	plane.reset(new Plane(device,0.0f,0.0f,0.0f,0.0f,0.0f));
+	cube.reset(new Cube(device, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 
@@ -23,11 +24,7 @@ PrimitiveCreator::~PrimitiveCreator()
 
 void
 PrimitiveCreator::Init() {
-	plane->VertexBuffer();
-
-
-
-
+	
 
 	HRESULT result = S_OK;
 	//サンプラの設定
@@ -46,28 +43,37 @@ PrimitiveCreator::Init() {
 	samplerDesc.MaxAnisotropy = 0;
 	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
 	//ディスクリプタレンジの設定
-	D3D12_DESCRIPTOR_RANGE range[1] = {};
+	D3D12_DESCRIPTOR_RANGE range[2] = {};
 
 	//ルートパラメータの設定
-	D3D12_ROOT_PARAMETER parameter[1] = {};
-	//"t0"に流す
+	D3D12_ROOT_PARAMETER parameter[2] = {};
+	//"b0"に流す
 	range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 	range[0].NumDescriptors = 1;
 	range[0].BaseShaderRegister = 0;
 	range[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
+	//"t1"に流す
+	range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	range[1].NumDescriptors = 1;
+	range[1].BaseShaderRegister = 0;
+	range[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	
 	//デスクリプターテーブルの設定
 	parameter[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	parameter[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	parameter[0].DescriptorTable.NumDescriptorRanges = 1; //レンジの数
 	parameter[0].DescriptorTable.pDescriptorRanges = &range[0];
 
+	parameter[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	parameter[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	parameter[1].DescriptorTable.NumDescriptorRanges = 1;
+	parameter[1].DescriptorTable.pDescriptorRanges = &range[1];
 
 	//ルートシグネチャ
 	ComPtr<ID3DBlob> signature;
 	ComPtr<ID3DBlob> error;
 	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
-	rsDesc.NumParameters =1;
+	rsDesc.NumParameters = _countof(parameter);;
 	rsDesc.NumStaticSamplers = 1;
 	rsDesc.pParameters = parameter;
 	rsDesc.pStaticSamplers = &samplerDesc;
@@ -78,19 +84,20 @@ PrimitiveCreator::Init() {
 		&signature,
 		&error
 	);
-	device->CreateRootSignature(
+	result = device->CreateRootSignature(
 		0,
 		signature->GetBufferPointer(),
 		signature->GetBufferSize(),
 		IID_PPV_ARGS(rootSignature.GetAddressOf())
 	);
 
-
+	plane->VertexBuffer();
+	cube->VertexBuffer();
 	//頂点レイアウト
 	D3D12_INPUT_ELEMENT_DESC inputLayoutDescs[] = {
 		{ "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
 		{ "NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "COLOR",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
 		{ "TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
 	};
 
@@ -131,8 +138,9 @@ PrimitiveCreator::Init() {
 
 void 
 PrimitiveCreator::SetPrimitiveDrawMode(ID3D12GraphicsCommandList* cmdlist) {
-	cmdlist->SetComputeRootSignature(rootSignature.Get());
+	
 	cmdlist->SetPipelineState(_pipelineState.Get());
+	cmdlist->SetGraphicsRootSignature(rootSignature.Get());
 	//
 	cmdlist->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 }
@@ -143,5 +151,7 @@ PrimitiveCreator::SetPrimitiveDrawMode(ID3D12GraphicsCommandList* cmdlist) {
 //}
 void
 PrimitiveCreator::Draw(ID3D12GraphicsCommandList* cmdlist) {
+	
 	plane->Draw(cmdlist);
+	cube->Draw(cmdlist);
 }

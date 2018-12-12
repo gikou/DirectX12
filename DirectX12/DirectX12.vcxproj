@@ -127,6 +127,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="Cube.cpp" />
     <ClCompile Include="Dx12Buffer.cpp" />
     <ClCompile Include="Dx12BufferManager.cpp" />
     <ClCompile Include="Dx12ConstantBuffer.cpp" />
@@ -146,6 +147,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
+    <ClInclude Include="Cube.h" />
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="Dx12Buffer.h" />
     <ClInclude Include="Dx12BufferManager.h" />

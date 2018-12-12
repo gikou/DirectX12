@@ -7,27 +7,31 @@ class ID3D12Resource;
 struct PrimitiveVertex {
 	XMFLOAT3 pos;
 	XMFLOAT3 normal;
-	XMFLOAT3 color;
 	XMFLOAT2 uv;
+	XMFLOAT3 color;
 	PrimitiveVertex() {
 		pos = XMFLOAT3(0, 0, 0);
 		normal = XMFLOAT3(0, 0, 0);
 		color = XMFLOAT3(0, 0, 0);
 		uv = XMFLOAT2(0, 0);
 	}
-	PrimitiveVertex(XMFLOAT3& p, XMFLOAT3& norm, XMFLOAT2& coord) {
+	PrimitiveVertex(XMFLOAT3& p, XMFLOAT3& norm, XMFLOAT3& col, XMFLOAT2& coord) {
 		//入力変数名は、自分のメンバと重ならないようにするためだけにこんな名前にしている。 
 		pos = p;
 		normal = norm;
+		color = col;
 		uv = coord;
 	}
-	PrimitiveVertex(float x, float y, float z, float nx, float ny, float nz, float u, float v) {
+	PrimitiveVertex(float x, float y, float z, float nx, float ny, float nz, float cx, float cy, float cz, float u, float v) {
 		pos.x = x;
 		pos.y = y;
 		pos.z = z;
 		normal.x = nx;
 		normal.y = ny;
 		normal.z = nz;
+		color.x = cx;
+		color.x = cy;
+		color.x = cz;
 		uv.x = u;
 		uv.y = v;
 	}

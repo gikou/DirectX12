@@ -1,34 +1,15 @@
 #include "Plane.h"
-#include <d3d12.h>		//DirectX12を使うのに必要
 #include "d3dx12.h"
-#include <dxgi1_4.h>	//DXGIを扱うのに必要(DX12ではDXGI1.4が使われてる)
-#include <D3Dcompiler.h>//シェーダコンパイラで必要
 #include <DirectXMath.h>//数学系の便利なのが入ってるヘッダ
-#include <tchar.h>
-#include <vector>
-#include <memory>
-#include <wrl/client.h>
-#include<assert.h>
-#include <shlwapi.h>
-
-#include"DX12Init.h"
-#include"Dx12BufferManager.h"
-#include"PMDModel.h"
-#include"PMXModel.h"
-#include"LoadMotion.h"
-
-#include"Dx12ConstantBuffer.h"
 
 #pragma comment(lib,"d3d12.lib")
-#pragma comment(lib,"dxgi.lib")
-#pragma comment(lib, "d3dcompiler.lib")
-#pragma comment(lib, "shlwapi.lib")
+
 Plane::Plane(ID3D12Device* dev,float width, float depth, float nx, float ny, float nz):device(dev)
 {	
-	vertices.push_back(PrimitiveVertex(-50.f, -0.2f, 50.f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f));
-	vertices.push_back(PrimitiveVertex(50.f, -0.2f, 50.f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f));
-	vertices.push_back(PrimitiveVertex(-50.f, -0.2f, -50.f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f));
-	vertices.push_back(PrimitiveVertex(50.f, -0.2f, -50.f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f));
+	vertices.push_back(PrimitiveVertex(-50.f, -0.2f, 50.f, 0.0f, 1.0f, 0.0f, 0.0f,0.0f,0.0f,  0.0f, 0.0f));
+	vertices.push_back(PrimitiveVertex(50.f, -0.2f, 50.f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f));
+	vertices.push_back(PrimitiveVertex(-50.f, -0.2f, -50.f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f));
+	vertices.push_back(PrimitiveVertex(50.f, -0.2f, -50.f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f));
 }
 
 

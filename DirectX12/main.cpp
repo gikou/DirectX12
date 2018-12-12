@@ -18,7 +18,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	RECT wrc = { 0, 0, 640, 480 };//ウィンドウサイズを設定
 	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);//補正
 
-													   //ウィンドウ生成
+	//ウィンドウ生成
 	HWND hwnd = CreateWindow(w.lpszClassName,//クラス名指定
 		_T("DirectX12"),			//タイトルバーの文字
 		WS_OVERLAPPEDWINDOW,		//タイトルバーと境界線があるウィンドウ

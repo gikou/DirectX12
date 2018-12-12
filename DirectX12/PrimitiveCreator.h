@@ -9,6 +9,7 @@ class ID3D12GraphicsCommandList;
 struct ID3D12PipelineState;
 struct ID3D12RootSignature;
 class Plane;
+class Cube;
 class PrimitiveCreator
 {
 private:
@@ -16,6 +17,7 @@ private:
 	//プリミティブ用のパイプラインステート 
 	ComPtr<ID3D12PipelineState> _pipelineState;
 	std::shared_ptr<Plane> plane;
+	std::shared_ptr<Cube> cube;
 	ID3D12Device* device;
 public:
 	PrimitiveCreator(ID3D12Device* dev);
