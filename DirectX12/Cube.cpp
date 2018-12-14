@@ -34,8 +34,8 @@ Cube::Cube(ID3D12Device* dev, float width, float depth, float nx, float ny, floa
 		//“Vˆä
 	vertices.push_back(PrimitiveVertex(XMFLOAT3(20, 10, -10), XMFLOAT3(0, 1, 0), XMFLOAT3(1, 0, 0), XMFLOAT2(0, 0)));
 	vertices.push_back(PrimitiveVertex(XMFLOAT3(10, 10, -10), XMFLOAT3(0, 1, 0), XMFLOAT3(1, 0, 0), XMFLOAT2(1, 0)));
-	vertices.push_back(PrimitiveVertex(XMFLOAT3(20, 10, 10), XMFLOAT3(0, 1, 0), XMFLOAT3(1, 0, 0), XMFLOAT2(0, 1)));
-	vertices.push_back(PrimitiveVertex(XMFLOAT3(10, 10, 10), XMFLOAT3(0, 1, 0), XMFLOAT3(1, 0, 0), XMFLOAT2(1, 1)));
+	vertices.push_back(PrimitiveVertex(XMFLOAT3(20, 10, 0), XMFLOAT3(0, 1, 0), XMFLOAT3(1, 0, 0), XMFLOAT2(0, 1)));
+	vertices.push_back(PrimitiveVertex(XMFLOAT3(10, 10, 0), XMFLOAT3(0, 1, 0), XMFLOAT3(1, 0, 0), XMFLOAT2(1, 1)));
 	//	//’n–Ê
 	//{ XMFLOAT3(-10, -10, -10),XMFLOAT2(0, 0) },
 	//{ XMFLOAT3(10,  -10, -10),XMFLOAT2(1, 0) },

@@ -10,6 +10,7 @@ struct ID3D12PipelineState;
 struct ID3D12RootSignature;
 class Plane;
 class Cube;
+class Cylinder;
 class PrimitiveCreator
 {
 private:
@@ -18,6 +19,7 @@ private:
 	ComPtr<ID3D12PipelineState> _pipelineState;
 	std::shared_ptr<Plane> plane;
 	std::shared_ptr<Cube> cube;
+	std::shared_ptr<Cylinder> cylinder;
 	ID3D12Device* device;
 public:
 	PrimitiveCreator(ID3D12Device* dev);

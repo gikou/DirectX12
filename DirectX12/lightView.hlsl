@@ -33,7 +33,7 @@ Out BasicVS(float4 pos : POSITION, float4 normal : NORMAL, float2 uv : TEXCOORD,
     o.svpos = mul(mul(ligth, world), pos);
     pos = mul(mul(ligth, world), pos);
 	//o.svpos = pos;
-    o.pos = pos;
+    //o.pos = pos;
     o.uv = uv;
     o.normal = mul(mul(ligth, world), normal);
     return o;

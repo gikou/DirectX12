@@ -1246,7 +1246,7 @@ void
 DX12Init::CreateConstantBuffer() {
 	BaseMatrixes matrix = {};
 	auto world = XMMatrixRotationY(0.2);
-	eye = XMFLOAT3(0, 10, -15);
+	eye = XMFLOAT3(0, 20, -13);
 	target = XMFLOAT3(0, 10, 0);
 	auto up = XMFLOAT3(0, 1, 0);
 	camera = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
@@ -1761,11 +1761,11 @@ DX12Init::DrawLightView() {
 	_commandList->IASetVertexBuffers(0, 1, &vbView);
 	_commandList->IASetIndexBuffer(&indexView);
 
-	_commandList->SetDescriptorHeaps(1, boneHeap.GetAddressOf());
-	_commandList->SetGraphicsRootDescriptorTable(1, boneHeap->GetGPUDescriptorHandleForHeapStart());
-
 	_commandList->SetDescriptorHeaps(1, registerDescHeap.GetAddressOf());
 	_commandList->SetGraphicsRootDescriptorTable(0, registerDescHeap->GetGPUDescriptorHandleForHeapStart());
+
+	_commandList->SetDescriptorHeaps(1, boneHeap.GetAddressOf());
+	_commandList->SetGraphicsRootDescriptorTable(1, boneHeap->GetGPUDescriptorHandleForHeapStart());
 
 	_commandList->DrawIndexedInstanced(model->GetIndices().size(), 1, 0, 0, 0);
 	
@@ -1910,13 +1910,13 @@ DX12Init::InputMove() {
 		if (keystate['X'] & 0x80) {
 			rotation.y -= 0.01f;
 		}
-		if (keystate['W'] & 0x80) {
-			rotation.x += 0.01f;
-		}
-		if (keystate['S'] & 0x80) {
-			rotation.x -= 0.01f;
-		}
-		if (keystate[VK_UP] & 0x80) {
+		//if (keystate['W'] & 0x80) {
+		//	rotation.x += 0.01f;
+		//}
+		//if (keystate['S'] & 0x80) {
+		//	rotation.x -= 0.01f;
+		//}
+		/*if (keystate[VK_UP] & 0x80) {
 			eye.y -= 0.1f;
 			target.y -= 0.1f;
 		}
@@ -1931,7 +1931,7 @@ DX12Init::InputMove() {
 		if (keystate[VK_DOWN] & 0x80) {
 			eye.y += 0.1f;
 			target.y += 0.1f;
-		}
+		}*/
 		if (keystate[VK_SHIFT] & 0x80) {
 			eye.z += 0.1f;
 		}

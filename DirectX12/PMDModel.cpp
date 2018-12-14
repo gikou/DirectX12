@@ -94,8 +94,8 @@ PMDModel::ModelLoader() {
 		fread(&index.boneIndex, sizeof(unsigned short), 1, modelfp);
 		fread(&index.targetBoneIndex, sizeof(unsigned short), 1, modelfp);
 		fread(&index.length, sizeof(unsigned char), 1, modelfp);
-		fread(&index.iterations, sizeof(unsigned short), 1, modelfp);
-		fread(&index.weigth, sizeof(float), 1, modelfp);
+		fread(&index.iterationNum, sizeof(unsigned short), 1, modelfp);
+		fread(&index.restriction, sizeof(float), 1, modelfp);
 		fread(&index.childBoneIndex[0], sizeof(unsigned short), index.length, modelfp);
 	}
 	//Х\По 

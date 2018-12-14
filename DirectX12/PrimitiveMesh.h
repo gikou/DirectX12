@@ -7,8 +7,9 @@ class ID3D12Resource;
 struct PrimitiveVertex {
 	XMFLOAT3 pos;
 	XMFLOAT3 normal;
-	XMFLOAT2 uv;
 	XMFLOAT3 color;
+	XMFLOAT2 uv;
+
 	PrimitiveVertex() {
 		pos = XMFLOAT3(0, 0, 0);
 		normal = XMFLOAT3(0, 0, 0);
@@ -30,8 +31,8 @@ struct PrimitiveVertex {
 		normal.y = ny;
 		normal.z = nz;
 		color.x = cx;
-		color.x = cy;
-		color.x = cz;
+		color.y = cy;
+		color.z = cz;
 		uv.x = u;
 		uv.y = v;
 	}

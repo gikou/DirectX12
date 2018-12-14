@@ -6,10 +6,10 @@
 
 Plane::Plane(ID3D12Device* dev,float width, float depth, float nx, float ny, float nz):device(dev)
 {	
-	vertices.push_back(PrimitiveVertex(-50.f, -0.2f, 50.f, 0.0f, 1.0f, 0.0f, 0.0f,0.0f,0.0f,  0.0f, 0.0f));
-	vertices.push_back(PrimitiveVertex(50.f, -0.2f, 50.f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f));
-	vertices.push_back(PrimitiveVertex(-50.f, -0.2f, -50.f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f));
-	vertices.push_back(PrimitiveVertex(50.f, -0.2f, -50.f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f));
+	vertices.push_back(PrimitiveVertex(XMFLOAT3(-50.f, -0.2f, 50.f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(1.0f,1.0f,1.0f), XMFLOAT2(0.0f, 0.0f)));
+	vertices.push_back(PrimitiveVertex(XMFLOAT3(50.f, -0.2f, 50.f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 0.0f)));
+	vertices.push_back(PrimitiveVertex(XMFLOAT3(-50.f, -0.2f, -50.f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f)));
+	vertices.push_back(PrimitiveVertex(XMFLOAT3(50.f, -0.2f, -50.f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f)));
 }
 
 

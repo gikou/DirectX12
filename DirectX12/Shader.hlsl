@@ -32,6 +32,8 @@ struct Out
 	float2 uv : TEXCOORD;
 	float4 normal:NORMAL;
     float3 weight : WEIGHT;
+
+    float4 shadowpos : POSITION1;
 };
 
 Out BasicVS(float4 pos : POSITION, float4 normal : NORMAL, float2 uv : TEXCOORD, min16uint2 boneno : BONENO, min16uint weight : WEIGHT)
@@ -47,6 +49,7 @@ Out BasicVS(float4 pos : POSITION, float4 normal : NORMAL, float2 uv : TEXCOORD,
     pos = mul(mul(viewproj, world), pos);
 	//o.svpos = pos;
 	o.pos = pos;
+    o.shadowpos = mul(mul(ligth, world),pos);
     o.uv = uv;
     o.normal = mul(world, normal);
 	return o;
@@ -95,6 +98,7 @@ float4 BasicPS(Out o) : SV_TARGET
     float3 col = spacol.rgb + sphcol.rgb *  matcol.rgb;
 
     //col = pow(col, 2.2f);
+
 
     return texcol*float4(col, diffuse.a);
     //return float4(modelTex.Sample(smp, o.uv).rgb * diffuse, 1);

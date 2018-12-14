@@ -8,6 +8,7 @@
 
 #include"Plane.h"
 #include"Cube.h"
+#include"Cylinder.h"
 #pragma comment(lib, "d3dcompiler.lib")
 
 
@@ -15,6 +16,7 @@ PrimitiveCreator::PrimitiveCreator(ID3D12Device* dev):device(dev)
 {
 	plane.reset(new Plane(device,0.0f,0.0f,0.0f,0.0f,0.0f));
 	cube.reset(new Cube(device, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f));
+	cylinder.reset(new Cylinder(device,15.0f,20.0f,20));
 }
 
 
@@ -93,6 +95,7 @@ PrimitiveCreator::Init() {
 
 	plane->VertexBuffer();
 	cube->VertexBuffer();
+	cylinder->VertexBuffer();
 	//頂点レイアウト
 	D3D12_INPUT_ELEMENT_DESC inputLayoutDescs[] = {
 		{ "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
@@ -153,5 +156,6 @@ void
 PrimitiveCreator::Draw(ID3D12GraphicsCommandList* cmdlist) {
 	
 	plane->Draw(cmdlist);
-	cube->Draw(cmdlist);
+	//cube->Draw(cmdlist);
+	cylinder->Draw(cmdlist);
 }

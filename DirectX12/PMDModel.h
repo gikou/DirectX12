@@ -53,8 +53,8 @@ struct IKData {
 	unsigned short boneIndex;
 	unsigned short targetBoneIndex;
 	unsigned char length;
-	unsigned short iterations;
-	float weigth;
+	unsigned short iterationNum;
+	float restriction;
 	unsigned short childBoneIndex[5];
 };
 #pragma pack()
