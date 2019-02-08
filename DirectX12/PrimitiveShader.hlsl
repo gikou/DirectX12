@@ -1,6 +1,7 @@
 SamplerState smp : register(s0);
 Texture2D<float> tex : register(t0); //通常テクスチャ 
 
+
 cbuffer mat : register(b0)
 {
     float4x4 world;
@@ -44,6 +45,7 @@ float4 PrimitivePS(PrimOutput inp) : SV_Target
     float t = tex.Sample(smp, inp.uv);
     t = pow(t, 5000.f);
     float3 texcol = float3(t, t, t);
+    //float3 texcol = float3(1, 1, 1);
     texcol *= inp.color;
     float brightness = 1;
     if (inp.shadowpos.z > t)

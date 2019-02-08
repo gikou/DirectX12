@@ -1,17 +1,13 @@
 #include "Application.h"
 #include"DX12Init.h"
-
-
-
-
-//頂点構造体
-struct Vertex {
-	DirectX::XMFLOAT3 pos;//座標
-	DirectX::XMFLOAT2 uv;//uv座標
-};
+//
+////頂点構造体
+//struct Vertex {
+//	DirectX::XMFLOAT3 pos;//座標
+//	DirectX::XMFLOAT2 uv;//uv座標
+//};
 
 using namespace Microsoft::WRL;
-using namespace DirectX;
 
 #define WIN_WIDTH	(640)	//ウィンドウサイズ幅
 #define WIN_HEIGTH	(480)	//ウィンドウサイズ高
@@ -47,12 +43,12 @@ Application::Run(HWND hwnd) {
 	debug = nullptr;
 #endif
 
-	ID3D12Device* device = nullptr;
+	
 	std::shared_ptr<DX12Init> dx12;
 	dx12.reset(new DX12Init());
-	dx12->Dx12SetInit(hwnd, device);
+	dx12->Dx12SetInit(hwnd, nullptr);
 	dx12->Initialize();
-	device = dx12->GetDevice();
+	//device = dx12->GetDevice();
 	//ループ
 	MSG msg = {};
 	while (msg.message != WM_QUIT) {
@@ -63,10 +59,10 @@ Application::Run(HWND hwnd) {
 		dx12->Draw();
 	}
 	dx12.reset();
-	ID3D12DebugDevice* debugInterface = nullptr;
+	/*ID3D12DebugDevice* debugInterface = nullptr;
 	result = device->QueryInterface(&debugInterface);
 	debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
-	Release(debugInterface);
+	Release(debugInterface);*/
 
 	return true;
 }

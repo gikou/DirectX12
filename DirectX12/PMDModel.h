@@ -1,7 +1,7 @@
 #pragma once
 #include<vector>
 #include<array>
-#include<DirectXMath.h>
+#include"AbeMath.h"
 
 
 
@@ -50,12 +50,12 @@ struct PMDBone {
 };
 
 struct IKData {
-	unsigned short boneIndex;
-	unsigned short targetBoneIndex;
-	unsigned char length;
-	unsigned short iterationNum;
-	float restriction;
-	unsigned short childBoneIndex[5];
+	unsigned short boneIndex; //IKボーンID
+	unsigned short targetBoneIndex; //対応するボーンID
+	unsigned char length; //子ノードの数
+	unsigned short iterationNum; //巡回回数
+	float restriction;	//制限角度
+	std::vector<unsigned short> childBoneIndex;	//子ノードのID
 };
 #pragma pack()
 
@@ -76,6 +76,7 @@ private:
 	std::vector<PMDTexturePath> texturePath;
 	std::array<char[100], 10> toonTexNames;
 	std::vector<PMDBone> bones;
+	std::vector<IKData> ikData;
 public:
 	PMDModel(const char* file);
 	~PMDModel();
@@ -86,6 +87,7 @@ public:
 	std::vector<PMDTexturePath> GetTexturePath();
 	std::array<char[100], 10> GetToonTexNames();
 	std::vector<PMDBone> GetBones();
+	std::vector<IKData> GetIKData();
 	std::string GetModelFolder();
 };
 

@@ -5,6 +5,7 @@ Texture2D<float4> spa : register(t1);
 Texture2D<float4> sph : register(t2);
 Texture2D<float4> clut : register(t3);
 
+
 SamplerState smp:register(s0);
 cbuffer mat : register(b0) {
 	float4x4 world;
@@ -45,9 +46,9 @@ Out BasicVS(float4 pos : POSITION, float4 normal : NORMAL, float2 uv : TEXCOORD,
     pos = mul(m, pos);
 
 	
-    o.svpos = mul(mul(viewproj, world), pos);
+   
     pos = mul(mul(viewproj, world), pos);
-	//o.svpos = pos;
+	o.svpos = pos;
 	o.pos = pos;
     o.shadowpos = mul(mul(ligth, world),pos);
     o.uv = uv;
@@ -62,7 +63,7 @@ float4 BasicPS(Out o) : SV_TARGET
     //return spa.Sample(smp, o.uv);
     //return float4(1, 1, 1, 1);
 	//
-    //return float4(o.weight, 1);
+   // return float4(o.uv,1, 1);
     float3 lightcol = (0.4f, 0.4f, 0.4f);
 
 
@@ -99,8 +100,7 @@ float4 BasicPS(Out o) : SV_TARGET
 
     //col = pow(col, 2.2f);
 
-
-    return texcol*float4(col, diffuse.a);
+    return texcol * float4(col.rgb, diffuse.a);
     //return float4(modelTex.Sample(smp, o.uv).rgb * diffuse, 1);
 	//float3 color = (exitTex==1) ? tex.Sample(smp, o.uv).rgb : diffuse;
     //return float4(color * brightness, 1);

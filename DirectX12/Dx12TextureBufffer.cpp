@@ -1,7 +1,7 @@
 #include "Dx12TextureBufffer.h"
 #include<d3d12.h>
 #include<d3dx12.h>
-#include<DirectXMath.h>
+#include"AbeMath.h"
 //#include<DirectXTex.h>
 //#pragma comment(lib,"DirectXTex.lib")
 Dx12TextureBufffer::Dx12TextureBufffer(ID3D12Device* device) :_device(device)

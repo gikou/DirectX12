@@ -7,20 +7,21 @@ class PrimitiveObject;
 class ID3D12Device;
 class ID3D12GraphicsCommandList;
 struct ID3D12PipelineState;
-struct ID3D12RootSignature;
+class RootSignature;
+class PiplineState;
 class Plane;
 class Cube;
 class Cylinder;
 class PrimitiveCreator
 {
 private:
-	ComPtr<ID3D12RootSignature> rootSignature;
+	std::shared_ptr<RootSignature> mRootSignature;
 	//プリミティブ用のパイプラインステート 
-	ComPtr<ID3D12PipelineState> _pipelineState;
-	std::shared_ptr<Plane> plane;
-	std::shared_ptr<Cube> cube;
-	std::shared_ptr<Cylinder> cylinder;
-	ID3D12Device* device;
+	std::shared_ptr<PiplineState> mPipelineState;
+	std::shared_ptr<Plane> mPlaneMesh;
+	std::shared_ptr<Cube> mCubeMesh;
+	std::shared_ptr<Cylinder> mCylinderMesh;
+	ID3D12Device* mDevice;
 public:
 	PrimitiveCreator(ID3D12Device* dev);
 	~PrimitiveCreator();

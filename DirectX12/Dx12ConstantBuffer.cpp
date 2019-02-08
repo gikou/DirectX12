@@ -1,7 +1,7 @@
 #include"Dx12ConstantBuffer.h"
 #include<d3d12.h>
 #include<d3dx12.h>
-#include<DirectXMath.h>
+#include"AbeMath.h"
 
 using namespace DirectX;
 

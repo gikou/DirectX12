@@ -4,7 +4,6 @@
 #include "d3dx12.h"
 #include <dxgi1_4.h>	//DXGIを扱うのに必要(DX12ではDXGI1.4が使われてる)
 #include <D3Dcompiler.h>//シェーダコンパイラで必要
-#include <DirectXMath.h>//数学系の便利なのが入ってるヘッダ
 #include <tchar.h>
 #include <vector>
 #include <memory>
@@ -19,10 +18,13 @@
 #include"PMDModel.h"
 #include"PMXModel.h"
 #include"LoadMotion.h"
-
 #include"src\RootSignature\RootSignature.h"
-
+#include"src\PiplineState\PiplineState.h"
 #include"PrimitiveCreator.h"
+#include"Plane.h"
+#include"Cube.h"
+#include"Cylinder.h"
+#include"SoundManager.h"
 
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
@@ -32,6 +34,12 @@
 #define WIN_WIDTH	(640)	//ウィンドウサイズ幅
 #define WIN_HEIGTH	(480)	//ウィンドウサイズ高
 using namespace DirectX;
+
+const DirectX::XMFLOAT3 LIGHT_POSITION = { -50.0f, 30.0f, -50.0f };
+const float VIEW_WIDTH = 40.0f;
+const float VIEW_HEIGHT = 40.0f;
+const float VIEW_NEAR = 1.0f;
+const float VIEW_FAR = 100.0f;
 
 //頂点構造体
 struct Vertex {
@@ -108,8 +116,7 @@ DX12Init::BendBone(const char* name, DirectX::XMFLOAT4& q, DirectX::XMFLOAT3& lo
 }
 
 
-float GetBezierYValueFromXWithNewton(float x, const XMFLOAT2& a, const XMFLOAT2& b, const unsigned int
-	n = 16) {
+float GetBezierYValueFromXWithNewton(float x, const XMFLOAT2& a, const XMFLOAT2& b, const unsigned int n = 16) {
 	if (a.x == a.y&&b.x == b.y)return x;//直線になってるのでx=yである⇒計算不必要 
 	
 	float t = x;//tは最終的に求めたい媒介変数。初期値はxと同じでいい 
@@ -134,52 +141,6 @@ float GetBezierYValueFromXWithNewton(float x, const XMFLOAT2& a, const XMFLOAT2&
 }
 
 
-D3D12_GRAPHICS_PIPELINE_STATE_DESC SetPiplineState(std::wstring shaderName, const char* vsPath, const char* psPath, D3D12_INPUT_ELEMENT_DESC* element, int elementCnt, ID3D12RootSignature* root) {
-	ComPtr<ID3DBlob> vertexShader;//頂点シェーダー
-	ComPtr<ID3DBlob> pixelShader;//ピクセルシェーダー
-	ComPtr<ID3DBlob> error;
-
-	D3DCompileFromFile(shaderName.c_str(), nullptr, nullptr, vsPath, "vs_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &vertexShader, &error);
-	/*if (FAILED(result)) {
-		std::string strErr;
-		strErr.resize(error->GetBufferSize());
-		::OutputDebugStringA(strErr.c_str());
-	}*/
-	D3DCompileFromFile(shaderName.c_str(), nullptr, nullptr, psPath, "ps_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &pixelShader, &error);
-	/*if (FAILED(result)) {
-		std::string strErr;
-		strErr.resize(error->GetBufferSize());
-		::OutputDebugStringA(strErr.c_str());
-	}*/
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
-	gpsDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	gpsDesc.BlendState.AlphaToCoverageEnable = true;
-	gpsDesc.DepthStencilState.DepthEnable = true;
-	gpsDesc.DepthStencilState.StencilEnable = false;
-	gpsDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	gpsDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-	gpsDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
-	gpsDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-	gpsDesc.InputLayout.NumElements = elementCnt;
-	gpsDesc.InputLayout.pInputElementDescs = element;
-	gpsDesc.pRootSignature = root;
-	gpsDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-
-	gpsDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-
-	gpsDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	gpsDesc.SampleDesc.Count = 1;
-	gpsDesc.NumRenderTargets = 1;
-	gpsDesc.SampleMask = UINT_MAX;
-
-	return gpsDesc;
-}
-
 
 DX12Init::DX12Init()
 {
@@ -195,10 +156,11 @@ void
 DX12Init::Delete() {
 	
 }
+
 void
 DX12Init::Dx12SetInit(HWND hwnd, ID3D12Device* dev) {
 	_hwnd = hwnd;
-	device = dev;
+	
 	//model.reset(new PMDModel("Model/霊夢/reimu.pmd"));
 	//model.reset(new PMDModel("Model/初音ミク/初音ミク.pmd"));
 	model.reset(new PMDModel("Model/初音ミクメタル/初音ミクmetal.pmd"));
@@ -206,12 +168,14 @@ DX12Init::Dx12SetInit(HWND hwnd, ID3D12Device* dev) {
 	//model.reset(new PMDModel("Model/巡音ルカ/巡音ルカ.pmd"));
 	//pmxmodel.reset(new PMXModel("model/レム/Rem.pmx"));
 	//pmxmodel.reset(new PMXModel("model/ラム/Ram.pmx"));
-	//pmxmodel.reset(new PMXModel("model/シリカ/Silica.pmx"));
-	//pmxmodel.reset(new PMXModel("model/キュアマジカル/Magical.pmx"));
-	//pmxmodel.reset(new PMXModel("model/キュアミラクル/Miracle.pmx"));
-	//pmxmodel.reset(new PMXModel("model/キュアエール/Yell.pmx"));
-	motion.reset(new LoadMotion("motion/swing.vmd"));
+	motion.reset(new LoadMotion("motion/ヤゴコロダンス.vmd"));
 	model->ModelLoader();
+
+	mPlane = std::make_shared<Plane>(XMFLOAT3(0.0f, 0.0f, 0.0f), 100.0f, 100.0f, XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 1.0f));
+	mCylinder = std::make_shared<Cylinder>(15.0f, 20.0f, 20);
+	mCube = std::make_shared<Cube>(XMFLOAT3(0.0f, 5.0f, 0.0f), XMFLOAT3(1.0f, 1.0f,1.0f), XMFLOAT3(0.5f, 0.0f, 0.0f));
+	//SoundManager::GetInstance().Initialize("Sound/Sound.acf","Sound/GameMain.acb","");
+	//SoundManager::GetInstance().PlayBGM("MainBGM", 0.0f, 0.0f);
 }
 
 std::wstring StringToWstring(const std::string& name) {
@@ -270,7 +234,7 @@ DX12Init::CreateCommand() {
 	desc.NodeMask = 0;
 	desc.Priority = 0;
 	desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-	device->CreateCommandQueue(&desc, IID_PPV_ARGS(_commandQueue.GetAddressOf()));
+	HRESULT result = device->CreateCommandQueue(&desc, IID_PPV_ARGS(_commandQueue.GetAddressOf()));
 	
 	//return result;
 }
@@ -419,282 +383,41 @@ DX12Init::Create2ndPathRTVSRV() {
 
 void
 DX12Init::CreateRootSgnature() {
-	//サンプラの設定
-	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
-	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
-	samplerDesc.MinLOD = 0.0f;
-	samplerDesc.MipLODBias = 0.0f;
-	samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-	samplerDesc.ShaderRegister = 0;
-	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	samplerDesc.RegisterSpace = 0;
-	samplerDesc.MaxAnisotropy = 0;
-	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-
-	//ディスクリプタレンジの設定
-	D3D12_DESCRIPTOR_RANGE descTblRange[7] = {};
-
-	//ルートパラメータの設定
-	D3D12_ROOT_PARAMETER parameter[3] = {};
-	//"b0"に流す
-	descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	descTblRange[0].NumDescriptors = 1;
-	descTblRange[0].BaseShaderRegister = 0;
-	descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	////D3D12_DESCRIPTOR_RANGE descTblRange[1 = {};
-	//"b1"に流す
-	descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	descTblRange[1].NumDescriptors = 1;
-	descTblRange[1].BaseShaderRegister = 1;//レジスター指定
-	descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//"t0"に流す 
-	descTblRange[2].NumDescriptors = 1;//マテリアル数 
-	descTblRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	descTblRange[2].BaseShaderRegister = 0;
-	descTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//"t1"に流す 
-	descTblRange[3].NumDescriptors = 1;//マテリアル数 
-	descTblRange[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	descTblRange[3].BaseShaderRegister = 1;
-	descTblRange[3].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//"t2"に流す 
-	descTblRange[4].NumDescriptors = 1;//マテリアル数 
-	descTblRange[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	descTblRange[4].BaseShaderRegister = 2;
-	descTblRange[4].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//"t3"に流す 
-	descTblRange[5].NumDescriptors = 1;//マテリアル数 
-	descTblRange[5].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	descTblRange[5].BaseShaderRegister = 3;
-	descTblRange[5].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//"b2"に流す 
-	descTblRange[6].NumDescriptors = 1;
-	descTblRange[6].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	descTblRange[6].BaseShaderRegister = 2;
-	descTblRange[6].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//デスクリプターテーブルの設定
-	parameter[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	parameter[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	parameter[0].DescriptorTable.NumDescriptorRanges = 1; //レンジの数
-	parameter[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];
 	
-	parameter[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	parameter[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	parameter[1].DescriptorTable.NumDescriptorRanges = 5; //レンジの数
-	parameter[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];
+	rootsignater["1Path"] = std::make_shared<RootSignature>();
+	rootsignater["1Path"]->SetTableRange(0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 0);
+	rootsignater["1Path"]->SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1);
+	rootsignater["1Path"]->SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0);
+	rootsignater["1Path"]->SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1);
+	rootsignater["1Path"]->SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2);
+	rootsignater["1Path"]->SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3);
+	rootsignater["1Path"]->SetTableRange(2, D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 2);
 
-	parameter[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	parameter[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-	parameter[2].DescriptorTable.NumDescriptorRanges = 1; //レンジの数
-	parameter[2].DescriptorTable.pDescriptorRanges = &descTblRange[6];
+	rootsignater["1Path"]->CreateRootSignature(device.Get());
 
-	//ルートシグネチャ
-	ComPtr<ID3DBlob> signature;
-	ComPtr<ID3DBlob> error;
-	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
-	rsDesc.NumParameters = 3;
-	rsDesc.NumStaticSamplers = 1;
-	rsDesc.pParameters = parameter;
-	rsDesc.pStaticSamplers = &samplerDesc;
-	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-	D3D12SerializeRootSignature(
-		&rsDesc,
-		D3D_ROOT_SIGNATURE_VERSION_1,
-		&signature,
-		&error
-	);
-	
-
-	device->CreateRootSignature(
-		0,
-		signature->GetBufferPointer(),
-		signature->GetBufferSize(),
-		IID_PPV_ARGS(rootSignature.GetAddressOf())
-	);
-	//return result;
-	
 }
 
 void 
 DX12Init::Create1stPathRootSgnature() {
-	//サンプラの設定
-	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
-	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
-	samplerDesc.MinLOD = 0.0f;
-	samplerDesc.MipLODBias = 0.0f;
-	samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-	samplerDesc.ShaderRegister = 0;
-	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	samplerDesc.RegisterSpace = 0;
-	samplerDesc.MaxAnisotropy = 0;
-	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
 
-	//ディスクリプタレンジの設定
-	std::vector<D3D12_DESCRIPTOR_RANGE> canvasTblRange(4);
+	rootsignater["2Path"] = std::make_shared<RootSignature>();
+	rootsignater["2Path"]->SetTableRange(0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0);
+	rootsignater["2Path"]->SetTableRange(0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1);
+	rootsignater["2Path"]->SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 0);
+	rootsignater["2Path"]->SetTableRange(2, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2);
 
-	//ルートパラメータの設定
-	std::vector<D3D12_ROOT_PARAMETER> canvasParameter(3);
-	//"t0"に流す
-	canvasTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	canvasTblRange[0].NumDescriptors = 1;
-	canvasTblRange[0].BaseShaderRegister = 0;
-	canvasTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-	//"t1"に流す
-	canvasTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	canvasTblRange[1].NumDescriptors = 1;
-	canvasTblRange[1].BaseShaderRegister = 1;
-	canvasTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	rootsignater["2Path"]->CreateRootSignature(device.Get());
 
-	//"b1"に流す
-	canvasTblRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	canvasTblRange[2].NumDescriptors = 1;
-	canvasTblRange[2].BaseShaderRegister = 0;
-	canvasTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//"t1"に流す
-	canvasTblRange[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	canvasTblRange[3].NumDescriptors = 1;
-	canvasTblRange[3].BaseShaderRegister = 2;
-	canvasTblRange[3].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//デスクリプターテーブルの設定
-	canvasParameter[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	canvasParameter[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	canvasParameter[0].DescriptorTable.NumDescriptorRanges = 2; //レンジの数
-	canvasParameter[0].DescriptorTable.pDescriptorRanges = &canvasTblRange[0];
-
-	//デスクリプターテーブルの設定
-	canvasParameter[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	canvasParameter[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	canvasParameter[1].DescriptorTable.NumDescriptorRanges = 1; //レンジの数
-	canvasParameter[1].DescriptorTable.pDescriptorRanges = &canvasTblRange[2];
-
-	//デスクリプターテーブルの設定
-	canvasParameter[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	canvasParameter[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	canvasParameter[2].DescriptorTable.NumDescriptorRanges = 1; //レンジの数
-	canvasParameter[2].DescriptorTable.pDescriptorRanges = &canvasTblRange[3];
-
-	/*rootSignatures["1st"].SetTableRange(0, D3D12_DESCRIPTOR_RANGE_TYPE::D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0);
-	rootSignatures["1st"].SetTableRange(0, D3D12_DESCRIPTOR_RANGE_TYPE::D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1);
-	rootSignatures["1st"].SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE::D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 0);
-	rootSignatures["1st"].SetTableRange(2, D3D12_DESCRIPTOR_RANGE_TYPE::D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2);
-	rootSignatures["1st"].CreateRootSignature(device.Get());*/
-	//ルートシグネチャ
-	ComPtr<ID3DBlob> signature;
-	ComPtr<ID3DBlob> error;
-	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
-	rsDesc.NumParameters = 3;
-	rsDesc.NumStaticSamplers = 1;
-	rsDesc.pParameters = canvasParameter.data();
-	rsDesc.pStaticSamplers = &samplerDesc;
-	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-	HRESULT a = D3D12SerializeRootSignature(
-		&rsDesc,
-		D3D_ROOT_SIGNATURE_VERSION_1,
-		&signature,
-		&error
-	);
-	
-
-	device->CreateRootSignature(
-		0,
-		signature->GetBufferPointer(),
-		signature->GetBufferSize(),
-		IID_PPV_ARGS(_1stPathRootSignature.GetAddressOf())
-	);
-	
-	//_1stPathRootSignature = rootSignatures["1st"].GetRootSignature();
-	//return result;
 }
 
 void
 DX12Init::Create2ndPathRootSgnature() {
-	//サンプラの設定
-	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
-	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
-	samplerDesc.MinLOD = 0.0f;
-	samplerDesc.MipLODBias = 0.0f;
-	samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-	samplerDesc.ShaderRegister = 0;
-	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	samplerDesc.RegisterSpace = 0;
-	samplerDesc.MaxAnisotropy = 0;
-	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-
-	//ディスクリプタレンジの設定
-	D3D12_DESCRIPTOR_RANGE canvasTblRange[2] = {};
-
-	//ルートパラメータの設定
-	D3D12_ROOT_PARAMETER canvasParameter[2] = {};
-	//"t0"に流す
-	canvasTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	canvasTblRange[0].NumDescriptors = 1;
-	canvasTblRange[0].BaseShaderRegister = 0;
-	canvasTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//"b1"に流す
-	canvasTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	canvasTblRange[1].NumDescriptors = 1;
-	canvasTblRange[1].BaseShaderRegister = 0;
-	canvasTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//デスクリプターテーブルの設定
-	canvasParameter[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	canvasParameter[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	canvasParameter[0].DescriptorTable.NumDescriptorRanges = 1; //レンジの数
-	canvasParameter[0].DescriptorTable.pDescriptorRanges = &canvasTblRange[0];
-
-	//デスクリプターテーブルの設定
-	canvasParameter[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	canvasParameter[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	canvasParameter[1].DescriptorTable.NumDescriptorRanges = 1; //レンジの数
-	canvasParameter[1].DescriptorTable.pDescriptorRanges = &canvasTblRange[1];
-
-	//ルートシグネチャ
-	ComPtr<ID3DBlob> signature;
-	ComPtr<ID3DBlob> error;
-	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
-	rsDesc.NumParameters = 2;
-	rsDesc.NumStaticSamplers = 1;
-	rsDesc.pParameters = canvasParameter;
-	rsDesc.pStaticSamplers = &samplerDesc;
-	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-	D3D12SerializeRootSignature(
-		&rsDesc,
-		D3D_ROOT_SIGNATURE_VERSION_1,
-		&signature,
-		&error
-	);
 	
+	rootsignater["3Path"] = std::make_shared<RootSignature>();
+	rootsignater["3Path"]->SetTableRange(0, D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0);
+	rootsignater["3Path"]->SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1);
 
-	device->CreateRootSignature(
-		0,
-		signature->GetBufferPointer(),
-		signature->GetBufferSize(),
-		IID_PPV_ARGS(_2ndPathRootSignature.GetAddressOf())
-	);
-	//return result;
+	rootsignater["3Path"]->CreateRootSignature(device.Get());
 }
 
 void
@@ -1078,9 +801,9 @@ DX12Init::CreateShader() {
 	ComPtr<ID3DBlob> effect2ndPathPixelShader;//ピクセルシェーダー
 
 	ID3DBlob* error = nullptr;
-
+	HRESULT result = S_OK;
 	//頂点レイアウトの定義
-	D3D12_INPUT_ELEMENT_DESC input[] = {
+	std::vector<D3D12_INPUT_ELEMENT_DESC> input = {
 		//頂点
 		{ "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
 		{ "NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
@@ -1089,109 +812,68 @@ DX12Init::CreateShader() {
 		{ "WEIGHT", 0, DXGI_FORMAT_R8_UINT, 0, D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 
-	//エフェクトの定義
-	D3D12_INPUT_ELEMENT_DESC effect1stPathInput[] = {
-		{ "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
-		{ "TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
-	};
-
-	//エフェクトの定義
-	D3D12_INPUT_ELEMENT_DESC effect2ndPathInput[] = {
-		{ "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
-		{ "TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
-	};
-
-
-	//シェーダーのコンパイルを行う
-	D3DCompileFromFile(_T("Shader.hlsl"), nullptr, nullptr, "BasicVS", "vs_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &vertexShader, &error);
-	/*if (FAILED(result)) {
-		std::string strErr;
-		strErr.resize(error->GetBufferSize());
-		memcpy(&strErr[0], &error[0], error->GetBufferSize());
-		::OutputDebugStringA(strErr.c_str());
-		return result;
-	}*/
-	D3DCompileFromFile(_T("Shader.hlsl"), nullptr, nullptr, "BasicPS", "ps_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &pixelShader, &error);
-	/*if (FAILED(result)) {
-		std::string strErr;
-		strErr.resize(error->GetBufferSize());
-		memcpy(&strErr[0], error->GetBufferPointer(), error->GetBufferSize());
-		::OutputDebugStringA(strErr.c_str());
-		return result;
-	}*/
-
-	//パイプラインステートオブジェクト(PSO)
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
-	gpsDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	gpsDesc.BlendState.AlphaToCoverageEnable = true;
-	gpsDesc.DepthStencilState.DepthEnable = true;
-	gpsDesc.DepthStencilState.StencilEnable = false;
-	gpsDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	gpsDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-	gpsDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
-	gpsDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-	gpsDesc.InputLayout.NumElements = _countof(input);
-	gpsDesc.InputLayout.pInputElementDescs = input;
-	gpsDesc.pRootSignature = rootSignature.Get();
-	gpsDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-
-	gpsDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-
-	gpsDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	gpsDesc.SampleDesc.Count = 1;
-	gpsDesc.NumRenderTargets = 1;
-	gpsDesc.SampleMask = UINT_MAX;
-
-	device->CreateGraphicsPipelineState(&gpsDesc, IID_PPV_ARGS(pipelineState.GetAddressOf()));
 	
 
-	//シェーダーのコンパイルを行う
-	D3DCompileFromFile(_T("EffectCanvas.hlsl"), nullptr, nullptr, "EffectVS", "vs_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &effect1stPathVertexShader, &error);
-	/*if (FAILED(result)) {
-		std::string strErr;
-		strErr.resize(error->GetBufferSize());
-		memcpy(&strErr[0], &error[0], error->GetBufferSize());
-		::OutputDebugStringA(strErr.c_str());
-		return result;
-	}*/
-	D3DCompileFromFile(_T("EffectCanvas.hlsl"), nullptr, nullptr, "EffectPS", "ps_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &effect1stPathPixelShader, &error);
-	/*if (FAILED(result)) {
-		std::string strErr;
-		strErr.resize(error->GetBufferSize());
-		memcpy(&strErr[0], error->GetBufferPointer(), error->GetBufferSize());
-		::OutputDebugStringA(strErr.c_str());
-		return result;
-	}*/
+	piplineStates["1Path"] = std::make_shared<PiplineState>();
+	piplineStates["1Path"]->CompileShader(_T("Shader.hlsl"), "BasicVS", "BasicPS");
+	piplineStates["1Path"]->SetInputLayout(input);
+	result = piplineStates["1Path"]->CreatePiplineState(device.Get(), rootsignater["1Path"]->GetRootSignature());
 
-	//パイプラインステートオブジェクト(PSO)
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC efect1stGPUDesc = {};
-	efect1stGPUDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	efect1stGPUDesc.BlendState.AlphaToCoverageEnable = true;
-	efect1stGPUDesc.DepthStencilState.DepthEnable = false;
-	efect1stGPUDesc.DepthStencilState.StencilEnable = false;
-	efect1stGPUDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	efect1stGPUDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-	efect1stGPUDesc.VS = CD3DX12_SHADER_BYTECODE(effect1stPathVertexShader.Get());
-	efect1stGPUDesc.PS = CD3DX12_SHADER_BYTECODE(effect1stPathPixelShader.Get());
-	efect1stGPUDesc.InputLayout.NumElements = _countof(effect1stPathInput);
-	efect1stGPUDesc.InputLayout.pInputElementDescs = effect1stPathInput;
-	efect1stGPUDesc.pRootSignature = _1stPathRootSignature.Get();
-	efect1stGPUDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	//エフェクトの定義
+	std::vector<D3D12_INPUT_ELEMENT_DESC> effectInput = {
+		{ "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
+		{ "TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
+	};
 
-	efect1stGPUDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	efect1stGPUDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	efect1stGPUDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	efect1stGPUDesc.SampleDesc.Count = 1;
-	efect1stGPUDesc.NumRenderTargets = 1;
-	efect1stGPUDesc.SampleMask = UINT_MAX;
+	piplineStates["2Path"] = std::make_shared<PiplineState>();
+	piplineStates["2Path"]->CompileShader(_T("EffectCanvas.hlsl"), "EffectVS", "EffectPS");
+	piplineStates["2Path"]->SetInputLayout(effectInput);
+	result = piplineStates["2Path"]->CreatePiplineState(device.Get(), rootsignater["2Path"]->GetRootSignature());
 
-	HRESULT result = device->CreateGraphicsPipelineState(&efect1stGPUDesc, IID_PPV_ARGS(_1stPathPipelineState.GetAddressOf()));
+
+	////シェーダーのコンパイルを行う
+	//D3DCompileFromFile(_T("EffectCanvas.hlsl"), nullptr, nullptr, "EffectVS", "vs_5_0",
+	//	D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &effect1stPathVertexShader, &error);
+	///*if (FAILED(result)) {
+	//	std::string strErr;
+	//	strErr.resize(error->GetBufferSize());
+	//	memcpy(&strErr[0], &error[0], error->GetBufferSize());
+	//	::OutputDebugStringA(strErr.c_str());
+	//	return result;
+	//}*/
+	//D3DCompileFromFile(_T("EffectCanvas.hlsl"), nullptr, nullptr, "EffectPS", "ps_5_0",
+	//	D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &effect1stPathPixelShader, &error);
+	///*if (FAILED(result)) {
+	//	std::string strErr;
+	//	strErr.resize(error->GetBufferSize());
+	//	memcpy(&strErr[0], error->GetBufferPointer(), error->GetBufferSize());
+	//	::OutputDebugStringA(strErr.c_str());
+	//	return result;
+	//}*/
+
+	////パイプラインステートオブジェクト(PSO)
+	//D3D12_GRAPHICS_PIPELINE_STATE_DESC efect1stGPUDesc = {};
+	//efect1stGPUDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	//efect1stGPUDesc.BlendState.AlphaToCoverageEnable = true;
+	//efect1stGPUDesc.DepthStencilState.DepthEnable = false;
+	//efect1stGPUDesc.DepthStencilState.StencilEnable = false;
+	//efect1stGPUDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	//efect1stGPUDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	//efect1stGPUDesc.VS = CD3DX12_SHADER_BYTECODE(effect1stPathVertexShader.Get());
+	//efect1stGPUDesc.PS = CD3DX12_SHADER_BYTECODE(effect1stPathPixelShader.Get());
+	//efect1stGPUDesc.InputLayout.NumElements = _countof(effect1stPathInput);
+	//efect1stGPUDesc.InputLayout.pInputElementDescs = effect1stPathInput;
+	//efect1stGPUDesc.pRootSignature = rootsignater["2Path"]->GetRootSignature();
+	//efect1stGPUDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+	//efect1stGPUDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	//efect1stGPUDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	//efect1stGPUDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	//efect1stGPUDesc.SampleDesc.Count = 1;
+	//efect1stGPUDesc.NumRenderTargets = 1;
+	//efect1stGPUDesc.SampleMask = UINT_MAX;
+
+	//result = device->CreateGraphicsPipelineState(&efect1stGPUDesc, IID_PPV_ARGS(_1stPathPipelineState.GetAddressOf()));
 
 
 
@@ -1225,9 +907,9 @@ DX12Init::CreateShader() {
 	efect2ndGPUDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 	efect2ndGPUDesc.VS = CD3DX12_SHADER_BYTECODE(effect2ndPathVertexShader.Get());
 	efect2ndGPUDesc.PS = CD3DX12_SHADER_BYTECODE(effect2ndPathPixelShader.Get());
-	efect2ndGPUDesc.InputLayout.NumElements = _countof(effect2ndPathInput);
-	efect2ndGPUDesc.InputLayout.pInputElementDescs = effect2ndPathInput;
-	efect2ndGPUDesc.pRootSignature = _2ndPathRootSignature.Get();
+	efect2ndGPUDesc.InputLayout.NumElements = effectInput.size();
+	efect2ndGPUDesc.InputLayout.pInputElementDescs = effectInput.data();
+	efect2ndGPUDesc.pRootSignature = rootsignater["3Path"]->GetRootSignature();
 	efect2ndGPUDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 
 	efect2ndGPUDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
@@ -1252,17 +934,17 @@ DX12Init::CreateConstantBuffer() {
 	camera = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 	projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, static_cast<float>(640) / static_cast<float>(480), 0.1f, 300.0f);
 
-	XMFLOAT3 toLight = XMFLOAT3( -50,30,-50 );
 
+	XMFLOAT3 toLight = LIGHT_POSITION;
 	XMVECTOR lightPos = XMLoadFloat3(&toLight);
-	XMFLOAT3 lPos;
-	XMStoreFloat3(&lPos, lightPos);
 	XMMATRIX lightview = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up));
-	XMMATRIX lightproj = XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
+	XMMATRIX lightproj = XMMatrixOrthographicLH(VIEW_WIDTH, VIEW_HEIGHT, VIEW_NEAR, VIEW_FAR);
+	matrix.ligth = lightview * lightproj;
+	
 
 	matrix.world = world;
 	matrix.viewproj = camera * projection;
-	matrix.ligth = lightview * lightproj;
+	
 	matrix.eye = { eye.x, eye.y, eye.z, 1.0f};
 	
 
@@ -1474,34 +1156,164 @@ DX12Init::CreateBonesBuffer() {
 	//return S_OK;
 }
 
+void DX12Init::CCDIK()
+{
+
+
+	std::fill(boneMatrices.begin(), boneMatrices.end(), XMMatrixIdentity());//初期化 
+
+	static XMFLOAT3 offsetpos = { 0.0f,0.0f,0.0f };
+	unsigned char keystate[256];
+	if (GetKeyboardState(keystate)) {
+		if (keystate['W'] & 0x80) {
+			offsetpos.y += 0.2f;
+		}else if (keystate['S'] & 0x80) {
+			offsetpos.y -= 0.2f;
+		}
+		if (keystate['A'] & 0x80) {
+			offsetpos.x -= 0.2f;
+		}
+		else if (keystate['D'] & 0x80) {
+			offsetpos.x += 0.2f;
+		}
+		if (keystate['E'] & 0x80) {
+			offsetpos.z -= 0.2f;
+		}
+		else if (keystate['R'] & 0x80) {
+			offsetpos.z += 0.2f;
+		}
+	}
+	auto ikData = model->GetIKData();
+	auto boneData = model->GetBones();
+	int ikIdx = ikData[3].boneIndex;//IKボーンマトリクス番号を取得 
+	std::vector<unsigned short>& itn = ikData[3].childBoneIndex;//IKに対応するボーンのインデックス 
+	std::vector<unsigned short>::iterator it = itn.begin();
+
+	DirectX::XMFLOAT3 offset = offsetpos;
+
+
+	std::vector<XMFLOAT3> tmpLocation(itn.size());//IKから支点までのボーン座標(IKは含まない) 
+	XMFLOAT3 ikpos = boneData[ikIdx].headPos;//IKの座標 
+	XMFLOAT3 targetpos = ikpos + offset;//IKの座標(目的地やから変わらへん) 
+	mCube->SetPosition({ targetpos.x,targetpos.y-5.0f,targetpos.z});
+	int nodecount = itn.size();//チェーンノード数 
+
+	for (int i = 0; i<nodecount; ++i) {
+		tmpLocation[i] = boneData[itn[i]].headPos;
+	}
+
+
+	XMFLOAT3 ikOriginRootVec = ikpos - tmpLocation[ikData[3].length - 1];
+	XMFLOAT3 ikTargetRootVec = targetpos - tmpLocation[ikData[3].length - 1];
+	//XMMATRIX matIkRot = LookAtMatrix(Normalize(ikOriginRootVec), Normalize(ikTargetRootVec),DirectX::XMFLOAT3(0, 1, 0), XMFLOAT3(1, 0, 0));
+	XMFLOAT3 rootAxis = Cross(Normalize(ikOriginRootVec), Normalize(ikTargetRootVec));
+	float rootAngle = XMVector3AngleBetweenNormals(XMLoadFloat3(&Normalize(ikOriginRootVec)), XMLoadFloat3(&Normalize(ikTargetRootVec))).m128_f32[0];
+	XMVECTOR matIkRot = XMQuaternionRotationAxis(XMLoadFloat3(&rootAxis), rootAngle);
+
+	for (int c = 0; c<ikData[3].iterationNum; ++c) {
+		for (int i = 0; i<nodecount; ++i) {
+
+
+
+			if (ikpos == targetpos) {
+				break;
+			}
+			XMFLOAT3 originVec = ikpos - tmpLocation[i];//もとの先っちょIKとさかのぼりノードでベクトル作成
+			XMFLOAT3 transVec = targetpos - tmpLocation[i];//目標地点とさかのぼりノードでベクトルを作成
+				//ベクトル長が小さすぎる場合は処理を打ち切る 
+			if (abs(Length(transVec))<0.1 || abs(Length(originVec))<0.1) {
+				return;
+			}
+
+			//軸作成 
+			XMFLOAT3 axis =Cross( Normalize(originVec),Normalize(transVec));//ちなみに^は外積として扱っている
+			const char* name = boneData[itn[i]].boneName;
+
+			if (strcmp(boneData[itn[i]].boneName, " 右 ひ ざ ") == 0 ||
+				strcmp(boneData[itn[i]].boneName, "左ひざ") == 0) {
+				axis.x = -1;//norm; 
+				axis.y = 0;
+				axis.z = 0;
+			}
+			else {
+				if (Length(axis) == 0) {
+					return;
+				}
+			}
+
+			if (strcmp(boneData[itn[i]].boneName, "左ひざ") == 0 && axis.x != -1) {
+				return;
+			}
+
+			//角度計算 
+			float rot = XMVector3AngleBetweenNormals(XMLoadFloat3(&Normalize(originVec)), XMLoadFloat3(&Normalize(transVec))).m128_f32[0];
+			rot *= 0.5;
+			//角度が小さすぎる場合は処理を打ち切る 
+			if (abs(rot) == 0.000f) {
+				return;
+			}
+			float strict = ikData[3].restriction*4.0f;
+			if (strict <= rot || -strict >= rot) {
+				int a = 0;
+			}
+			rot = min(rot, strict);
+			rot = max(rot, -strict);
+			XMVECTOR q = XMQuaternionRotationAxis(XMLoadFloat3(&axis), rot);
+
+			//ボーンの変換行列を計算 
+			XMFLOAT3 offset = boneData[itn[i]].headPos;
+			XMMATRIX RotAt = XMMatrixTranslation(-offset.x, -offset.y, -offset.z)*
+				XMMatrixRotationQuaternion(q)*
+				XMMatrixTranslation(offset.x, offset.y, offset.z);
+
+
+			boneMatrices[itn[i]] = boneMatrices[itn[i]] * RotAt;
+
+			offset = tmpLocation[i];
+
+			//理論上の変換行列を計算 
+			RotAt = XMMatrixTranslation(-offset.x, -offset.y, -offset.z)*
+				XMMatrixRotationQuaternion(q)*
+				XMMatrixTranslation(offset.x, offset.y, offset.z);
+
+			//理論値を更新 
+			ikpos = ikpos*RotAt;
+			for (int j = i - 1; j >= 0; --j) {
+				tmpLocation[j] = tmpLocation[j] * RotAt;
+			}
+		}
+	}
+}
+
 void 
 DX12Init::MotionUpdate(int frameno) {
 	frameno = frameno % motion->MaxNum();
+	//行列の初期化
 	std::fill(boneMatrices.begin(), boneMatrices.end(), XMMatrixIdentity());//初期化 
 
-
+	//rootボーンから末端まで回転情報を渡していく
 	for (auto& boneanim : motion->GetAnimations()) {
 		std::sort(boneanim.second.begin(), boneanim.second.end(), [](const KeyFrame& a, const KeyFrame& b) {return a.frameNo < b.frameNo; });
 		auto& keyframes = boneanim.second;
 		auto rit = std::find_if(keyframes.rbegin(), keyframes.rend(), [frameno](const KeyFrame& k) {return k.frameNo <= frameno; });
 		auto it = rit.base();
 		if (it == keyframes.end()) {
+			//キーフレームがあるとき
 			BendBone(boneanim.first.c_str(), rit->quaternion,rit->location);
 		}
 		else {
+			//補間処理をします
 			float a = rit->frameNo;
 			float b = it->frameNo;
 			float t = (static_cast<float>(frameno) - a) / (b - a);
+			//補間曲線
 			t = GetBezierYValueFromXWithNewton(t, it->bz1, it->bz2);
-
 
 			BendBone(boneanim.first.c_str(), rit->quaternion,  rit->location, it->quaternion, t);
 		}
 	}
-
-
+	//回転情報をモデルに渡す
 	RecursiveMatrixMultiply(boneMap["センター"], boneMatrices[0]);
-
 	memcpy(mappedBones, &boneMatrices[0], boneMatrices.size() * sizeof(XMMATRIX));
 }
 
@@ -1596,7 +1408,7 @@ DX12Init::CreateShadowMap() {
 	shadowHeapProperties.CreationNodeMask = 1;
 	shadowHeapProperties.VisibleNodeMask = 1;
 
-
+	//深度バッファを作成
 	D3D12_CLEAR_VALUE clearValue = {};
 	clearValue.Format = DXGI_FORMAT_D32_FLOAT;
 	clearValue.DepthStencil.Depth = 1.0f;
@@ -1609,13 +1421,13 @@ DX12Init::CreateShadowMap() {
 		&clearValue,
 		IID_PPV_ARGS(shadowBuffer.GetAddressOf()));
 
+	//DepthStencilViewHeapの作成
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
 	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-
 	device->CreateDepthStencilView(shadowBuffer.Get(), &dsvDesc, shadowHeapDSV->GetCPUDescriptorHandleForHeapStart());
 
-
+	//ShaderResourceViewHeapの作成
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -1623,70 +1435,24 @@ DX12Init::CreateShadowMap() {
 	srvDesc.Texture2D.MipLevels = 1;
 	srvDesc.Texture2D.PlaneSlice = 0;
 	srvDesc.Texture2D.MostDetailedMip = 0;
-
 	device->CreateShaderResourceView(shadowBuffer.Get(), &srvDesc, shadowHeapSRV->GetCPUDescriptorHandleForHeapStart());
-	//return S_OK;
 }
 
 void 
 DX12Init::CreateShadowRootSgnature() {
 	HRESULT result;
-	//ディスクリプタレンジの設定
-	D3D12_DESCRIPTOR_RANGE descTblRange[2] = {};
+	rootsignater["Shadow"] = std::make_shared<RootSignature>();
+	rootsignater["Shadow"]->SetTableRange(0, D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 0);
+	rootsignater["Shadow"]->SetTableRange(1, D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1);
 
-	//ルートパラメータの設定
-	D3D12_ROOT_PARAMETER parameter[2] = {};
-	//"b0"に流す
-	descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	descTblRange[0].NumDescriptors = 1;
-	descTblRange[0].BaseShaderRegister = 0;
-	descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	rootsignater["Shadow"]->CreateRootSignature(device.Get());
 
-	//"b1"に流す
-	descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	descTblRange[1].NumDescriptors = 1;
-	descTblRange[1].BaseShaderRegister = 1;//レジスター指定
-	descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	//デスクリプターテーブルの設定
-	parameter[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	parameter[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	parameter[0].DescriptorTable.NumDescriptorRanges = 1; //レンジの数
-	parameter[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];
-
-	parameter[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	parameter[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	parameter[1].DescriptorTable.NumDescriptorRanges = 1; //レンジの数
-	parameter[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];
-
-	//ルートシグネチャ
-	ComPtr<ID3DBlob> signature;
-	ComPtr<ID3DBlob> error;
-	D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
-	rsDesc.NumParameters = 2;
-	rsDesc.NumStaticSamplers = 0;
-	rsDesc.pParameters = parameter;
-	rsDesc.pStaticSamplers = nullptr;
-	rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-	D3D12SerializeRootSignature(
-		&rsDesc,
-		D3D_ROOT_SIGNATURE_VERSION_1,
-		&signature,
-		&error
-	);
-
-	result = device->CreateRootSignature(
-		0,
-		signature->GetBufferPointer(),
-		signature->GetBufferSize(),
-		IID_PPV_ARGS(shadowRootSignature.GetAddressOf())
-	);
 
 	ComPtr<ID3DBlob> shadowVertexShader;//頂点シェーダー
 	ComPtr<ID3DBlob> shadowPixelShader;//ピクセルシェーダー
 
 	//頂点レイアウトの定義
-	D3D12_INPUT_ELEMENT_DESC shadowInput[] = {
+	std::vector<D3D12_INPUT_ELEMENT_DESC> shadowInput = {
 		//頂点
 		{ "POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
 		{ "NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0 },
@@ -1695,49 +1461,20 @@ DX12Init::CreateShadowRootSgnature() {
 		{ "WEIGHT", 0, DXGI_FORMAT_R8_UINT, 0, D3D12_APPEND_ALIGNED_ELEMENT,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 
-	//シェーダーのコンパイルを行う
-	result = D3DCompileFromFile(_T("lightView.hlsl"), nullptr, nullptr, "BasicVS", "vs_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &shadowVertexShader, &error);
+	piplineStates["Shadow"] = std::make_shared<PiplineState>();
+	piplineStates["Shadow"]->CompileShader(_T("lightView.hlsl"), "BasicVS", "BasicPS");
+	piplineStates["Shadow"]->SetInputLayout(shadowInput);
+	piplineStates["Shadow"]->CreatePiplineState(device.Get(), rootsignater["Shadow"]->GetRootSignature());
+	
 
-	result = D3DCompileFromFile(_T("lightView.hlsl"), nullptr, nullptr, "BasicPS", "ps_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &shadowPixelShader, &error);
 
-
-	//パイプラインステートオブジェクト(PSO)
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
-	gpsDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	gpsDesc.BlendState.AlphaToCoverageEnable = true;
-	gpsDesc.DepthStencilState.DepthEnable = true;
-	gpsDesc.DepthStencilState.StencilEnable = false;
-	gpsDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	gpsDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-	gpsDesc.VS = CD3DX12_SHADER_BYTECODE(shadowVertexShader.Get());
-	gpsDesc.PS = CD3DX12_SHADER_BYTECODE(shadowPixelShader.Get());
-	gpsDesc.InputLayout.NumElements = _countof(shadowInput);
-	gpsDesc.InputLayout.pInputElementDescs = shadowInput;
-	gpsDesc.pRootSignature = shadowRootSignature.Get();
-	gpsDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-
-	gpsDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-
-	gpsDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	gpsDesc.SampleDesc.Count = 1;
-	gpsDesc.NumRenderTargets = 1;
-	gpsDesc.SampleMask = UINT_MAX;
-
-	result = device->CreateGraphicsPipelineState(&gpsDesc, IID_PPV_ARGS(shadowPipelineState.GetAddressOf()));
-
-	//return result;
 }
-
-void 
-DX12Init::DrawLightView() {
+//深度バッファを書き込みます
+void DX12Init::DrawLightView() {
+	
 	_commandAllocator->Reset();
-	_commandList->Reset(_commandAllocator.Get(), shadowPipelineState.Get());
-	_commandList->SetGraphicsRootSignature(shadowRootSignature.Get());
-
+	_commandList->Reset(_commandAllocator.Get(), piplineStates["Shadow"]->GetPiplineState());
+	_commandList->SetGraphicsRootSignature(rootsignater["Shadow"]->GetRootSignature());
 
 	_commandList->OMSetRenderTargets(0, nullptr, false, &shadowHeapDSV->GetCPUDescriptorHandleForHeapStart());
 	_commandList->ClearDepthStencilView(shadowHeapDSV->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0.0f, 0, nullptr);
@@ -1755,26 +1492,17 @@ DX12Init::DrawLightView() {
 	const D3D12_RECT rect = { 0,0, shadowBuffer->GetDesc().Width,  shadowBuffer->GetDesc().Height };
 	_commandList->RSSetScissorRects(1, &rect);
 
-
 	_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	_commandList->IASetVertexBuffers(0, 1, &vbView);
-	_commandList->IASetIndexBuffer(&indexView);
-
+	
+	//回転情報・カメラ情報をシェーダに渡す
 	_commandList->SetDescriptorHeaps(1, registerDescHeap.GetAddressOf());
 	_commandList->SetGraphicsRootDescriptorTable(0, registerDescHeap->GetGPUDescriptorHandleForHeapStart());
-
 	_commandList->SetDescriptorHeaps(1, boneHeap.GetAddressOf());
 	_commandList->SetGraphicsRootDescriptorTable(1, boneHeap->GetGPUDescriptorHandleForHeapStart());
-
+	//モデルの情報を入れる
+	_commandList->IASetVertexBuffers(0, 1, &vbView);
+	_commandList->IASetIndexBuffer(&indexView);
 	_commandList->DrawIndexedInstanced(model->GetIndices().size(), 1, 0, 0, 0);
-	
-	_commandList->Close();
-	ID3D12CommandList* command2ndLists[] = { _commandList.Get() };
-	_commandQueue->ExecuteCommandLists(_countof(command2ndLists), command2ndLists);
-
-	Wait();
-
 
 }
 
@@ -1784,10 +1512,10 @@ DX12Init::CreateModelDrawBundle() {
 	result = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_BUNDLE, bundleAllocator.Get(), nullptr, IID_PPV_ARGS(bundleList.GetAddressOf()));
 	
 	//ルートシグネチャのセット
-	bundleList->SetGraphicsRootSignature(rootSignature.Get());
+	bundleList->SetGraphicsRootSignature(rootsignater["1Path"]->GetRootSignature());
 
 	//パイプラインのセット
-	bundleList->SetPipelineState(pipelineState.Get());
+	bundleList->SetPipelineState(piplineStates["1Path"]->GetPiplineState());
 
 	//三角ポリゴン描画にする
 	bundleList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -1795,6 +1523,7 @@ DX12Init::CreateModelDrawBundle() {
 	bundleList->IASetVertexBuffers(0, 1, &vbView);
 	bundleList->IASetIndexBuffer(&indexView);
 
+	//ボーンの回転情報
 	bundleList->SetDescriptorHeaps(1, boneHeap.GetAddressOf());
 	bundleList->SetGraphicsRootDescriptorTable(2, boneHeap->GetGPUDescriptorHandleForHeapStart());
 
@@ -1871,9 +1600,10 @@ DX12Init::Initialize() {
 	CreateModelDrawBundle();
 	primitive.reset(new PrimitiveCreator(device.Get()));
 	primitive->Init();
-
-
-	
+	mPlane->VertexBuffer(device.Get());
+	mCylinder->VertexBuffer(device.Get());
+	mCube->VertexBuffer(device.Get());
+	//CCDIK();
 	//return result;
 }
 
@@ -1893,6 +1623,7 @@ DX12Init::Wait() {
 
 	while (fence->GetCompletedValue() < fenceValue) {
 		fence->SetEventOnCompletion(fenceValue, fenceEvent);
+
 	}
 
 
@@ -1910,13 +1641,13 @@ DX12Init::InputMove() {
 		if (keystate['X'] & 0x80) {
 			rotation.y -= 0.01f;
 		}
-		//if (keystate['W'] & 0x80) {
-		//	rotation.x += 0.01f;
-		//}
-		//if (keystate['S'] & 0x80) {
-		//	rotation.x -= 0.01f;
-		//}
-		/*if (keystate[VK_UP] & 0x80) {
+		/*if (keystate['W'] & 0x80) {
+			rotation.x += 0.01f;
+		}
+		if (keystate['S'] & 0x80) {
+			rotation.x -= 0.01f;
+		}*/
+		if (keystate[VK_UP] & 0x80) {
 			eye.y -= 0.1f;
 			target.y -= 0.1f;
 		}
@@ -1931,13 +1662,21 @@ DX12Init::InputMove() {
 		if (keystate[VK_DOWN] & 0x80) {
 			eye.y += 0.1f;
 			target.y += 0.1f;
-		}*/
+		}
 		if (keystate[VK_SHIFT] & 0x80) {
 			eye.z += 0.1f;
 		}
 		if (keystate[VK_CONTROL] & 0x80) {
 			eye.z -= 0.1f;
 		}
+
+		/*auto v = SoundManager::GetInstance().GetVolumeBGM();
+		if (keystate['Q'] & 0x80) {
+			SoundManager::GetInstance().SetVolumeBGM(v + 0.05f);
+		}else if (keystate['A'] & 0x80) {
+			SoundManager::GetInstance().SetVolumeBGM(v - 0.05f);
+		}*/
+		
 	}
 
 	XMMATRIX world = XMMatrixRotationY(rotation.y)*XMMatrixRotationX(rotation.x);
@@ -1969,17 +1708,26 @@ DX12Init::SetViewAndScissor(unsigned int bbindex, ID3D12DescriptorHeap* heap) {
 
 void
 DX12Init::Draw() {
-	
+	//CCDIK();
+	//RecursiveMatrixMultiply(boneMap["センター"], boneMatrices[0]);
+	//memcpy(mappedBones, &boneMatrices[0], boneMatrices.size() * sizeof(XMMATRIX));
 	static unsigned int bbIndex = 0;
 	//_commandAllocator->Reset();
 	//_commandList->Reset(_commandAllocator.Get(), pipelineState.Get());
+	InputMove();
+	static int frameno = 0;
+	
+	MotionUpdate(frameno);
+
+	frameno++/2.0f;
+
 	DrawLightView();
 
 	_commandAllocator->Reset();
 	_commandList->Reset(_commandAllocator.Get(), pipelineState.Get());
 
-
-	ResourceBarrier(renderTarget, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	//_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(recource[swapChain->GetCurrentBackBufferIndex()], before, after));
+	//_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(_1stPathBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
 	SetViewAndScissor(bbIndex, _1stHeapRTV.Get());
 
@@ -1988,37 +1736,38 @@ DX12Init::Draw() {
 	_commandList->ClearDepthStencilView(_dsvHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0.0f, 0, nullptr);
 	_commandList->ClearRenderTargetView(_1stHeapRTV->GetCPUDescriptorHandleForHeapStart(), color, 0, nullptr);
 	//buffer->Update(_commandList);
-	InputMove();
-	static int frameno = 0;
-
-	MotionUpdate(frameno);
-
-	frameno++;
-
+	
 	_commandList->SetDescriptorHeaps(1, materialDescHeap.GetAddressOf());
 	_commandList->ExecuteBundle(bundleList.Get());
 
-
+	//3Dオブジェクト(Primitive)の描画
 	primitive->SetPrimitiveDrawMode(_commandList.Get());
-
+	//カメラの情報
 	_commandList->SetDescriptorHeaps(1, registerDescHeap.GetAddressOf());
 	_commandList->SetGraphicsRootDescriptorTable(0, registerDescHeap->GetGPUDescriptorHandleForHeapStart());
-
+	//正射影のテクスチャ
 	_commandList->SetDescriptorHeaps(1, shadowHeapSRV.GetAddressOf());
 	_commandList->SetGraphicsRootDescriptorTable(1, shadowHeapSRV->GetGPUDescriptorHandleForHeapStart());
+	//描画
+	mPlane->Draw(_commandList.Get());//床
+	mCylinder->Draw(_commandList.Get());//円柱
 
-	primitive->Draw(_commandList.Get());
 
-	_commandList->Close();
-	ID3D12CommandList* commandList[] = { _commandList.Get() };
-	_commandQueue->ExecuteCommandLists(_countof(commandList), commandList);
 
-	Wait();
+	//mCube->Draw(_commandList.Get());
+
+	//primitive->Draw(_commandList.Get());
+	//_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(_1stPathBuffer.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PRESENT));
+	//HRESULT result = _commandList->Close();
+	//ID3D12CommandList* commandList[] = { _commandList.Get() };
+	//_commandQueue->ExecuteCommandLists(_countof(commandList), commandList);
+
+	//Wait();
 	//-----------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------
 	_commandAllocator->Reset();
 	_commandList->Reset(_commandAllocator.Get(), _1stPathPipelineState.Get());
-	
+	//_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(_2ndPathBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 	SetViewAndScissor(bbIndex, _1stHeapRTV.Get());
 
 	//CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap->GetCPUDescriptorHandleForHeapStart(), bbIndex, device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
@@ -2028,8 +1777,8 @@ DX12Init::Draw() {
 	_commandList->OMSetRenderTargets(1, &_2ndHeapRTV->GetCPUDescriptorHandleForHeapStart(), false, &_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 	_commandList->ClearRenderTargetView(_2ndHeapRTV->GetCPUDescriptorHandleForHeapStart(), color, 0, nullptr);
 
-	_commandList->SetGraphicsRootSignature(_1stPathRootSignature.Get());
-	_commandList->SetPipelineState(_1stPathPipelineState.Get());
+	_commandList->SetGraphicsRootSignature(rootsignater["2Path"]->GetRootSignature());
+	_commandList->SetPipelineState(piplineStates["2Path"]->GetPiplineState());
 
 	_commandList->SetDescriptorHeaps(1, _1stHeapSRV.GetAddressOf());
 	_commandList->SetGraphicsRootDescriptorTable(0, _1stHeapSRV->GetGPUDescriptorHandleForHeapStart());
@@ -2045,13 +1794,13 @@ DX12Init::Draw() {
 	_commandList->IASetVertexBuffers(0, 1, &_1stCanvasView);
 	_commandList->DrawInstanced(4, 1, 0, 0);
 
-	ResourceBarrier(renderTarget, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	//_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(_2ndPathBuffer.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PRESENT));
 
-	_commandList->Close();
+	/*_commandList->Close();
 	ID3D12CommandList* commandLists[] = { _commandList.Get() };
 	_commandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
-	Wait();
+	Wait();*/
 	//-----------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------
 	//2Path
@@ -2065,7 +1814,7 @@ DX12Init::Draw() {
 	_commandList->OMSetRenderTargets(1, &rtvHandle, false, &_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 	_commandList->ClearRenderTargetView(rtvHandle, color, 0, nullptr);
 
-	_commandList->SetGraphicsRootSignature(_2ndPathRootSignature.Get());
+	_commandList->SetGraphicsRootSignature(rootsignater["3Path"]->GetRootSignature());
 	_commandList->SetPipelineState(_2ndPathPipelineState.Get());
 
 
@@ -2100,8 +1849,10 @@ DX12Init::Draw() {
 	//	/*result = */device->GetDeviceRemovedReason();
 	////}
 	bbIndex = swapChain->GetCurrentBackBufferIndex();
-	device->GetDeviceRemovedReason();
+	//device->GetDeviceRemovedReason();
 
+
+	//SoundManager::GetInstance().ExecuteMain();
 }
 
 ID3D12Device*

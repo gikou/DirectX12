@@ -1,6 +1,6 @@
 #pragma once
 #include<vector>
-#include<DirectXMath.h>
+#include"AbeMath.h"
 struct ID3D12Device;
 struct ID3D12Resource;
 

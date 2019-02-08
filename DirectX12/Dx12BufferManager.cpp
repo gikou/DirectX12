@@ -1,6 +1,5 @@
 #include<d3d12.h>
 #include<d3dx12.h>
-#include<DirectXMath.h>
 #include "Dx12BufferManager.h"
 #include"DX12Init.h"
 #include"Dx12TextureBufffer.h"

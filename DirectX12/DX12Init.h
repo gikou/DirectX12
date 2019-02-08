@@ -2,12 +2,11 @@
 #include <Windows.h>
 #include <d3d12.h>
 #include <dxgi1_4.h>
-#include <DirectXMath.h>
 #include <wrl/client.h>
 #include<vector>
 #include<memory>
 #include<map>
-
+#include"AbeMath.h"
 using namespace Microsoft::WRL;
 
 
@@ -16,11 +15,13 @@ class Dx12BufferManager;
 class PMDModel;
 class PMXModel;
 class LoadMotion;
-class CreateRootSignature;
+class RootSignature;
 class PrimitiveCreator;
 
 class RootSignature;
+class PiplineState;
 
+class PrimitiveMesh;
 //ワールドビュープロジェクトの構造体
 struct BaseMatrixes {
 	DirectX::XMMATRIX world;//ワールド 
@@ -51,8 +52,8 @@ private:
 	
 
 	std::shared_ptr<PrimitiveCreator> primitive;
-	std::shared_ptr<CreateRootSignature> rootsignater;
-	
+	std::map<std::string, std::shared_ptr<RootSignature>> rootsignater;
+	std::map<std::string, std::shared_ptr<PiplineState>> piplineStates;
 	Material* mapped;
 
 	unsigned char* pData;
@@ -72,7 +73,6 @@ private:
 	ComPtr<ID3D12RootSignature> rootSignature;
 	ComPtr<ID3D12PipelineState> pipelineState;
 
-	std::map<std::string, RootSignature> rootSignatures;
 
 
 	//WVP用
@@ -148,6 +148,11 @@ private:
 	ComPtr<ID3D12RootSignature> shadowRootSignature;
 	ComPtr<ID3D12PipelineState> shadowPipelineState;
 
+	//Mesh
+	std::shared_ptr<PrimitiveMesh> mPlane;
+	std::shared_ptr<PrimitiveMesh> mCylinder;
+	std::shared_ptr<PrimitiveMesh> mCube;
+
 	void CreateDevice();
 	void CreateCommand();
 	void CreateFence();
@@ -179,6 +184,7 @@ private:
 	void ResourceBarrier(std::vector<ID3D12Resource*> recource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 	void Wait();
 	void SetViewAndScissor(unsigned int bbindex, ID3D12DescriptorHeap* heap);
+	void CCDIK();
 	void RecursiveMatrixMultiply(BoneNode& node, DirectX::XMMATRIX& inMat);
 	void BendBone(const char* name, DirectX::XMFLOAT4& q,DirectX::XMFLOAT3& loc, const DirectX::XMFLOAT4& q2, float t);
 	void MotionUpdate(int frameNo);

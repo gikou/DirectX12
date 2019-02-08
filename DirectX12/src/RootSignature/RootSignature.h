@@ -13,11 +13,7 @@ enum D3D12_DESCRIPTOR_RANGE_TYPE;
 
 class RootSignature
 {
-private:
 
-	std::map<int, std::vector<D3D12_DESCRIPTOR_RANGE>> ranges;
-	ComPtr<ID3D12RootSignature>  rootSignature;
-	std::vector<D3D12_ROOT_PARAMETER> parameter;
 public:
 	RootSignature();
 	~RootSignature();
@@ -25,5 +21,9 @@ public:
 	void CreateRootSignature(ID3D12Device* dev);
 	std::vector<D3D12_ROOT_PARAMETER>& GetParameter();
 	ID3D12RootSignature* GetRootSignature();
+private:
+	std::map<int, std::vector<D3D12_DESCRIPTOR_RANGE>> ranges;
+	ComPtr<ID3D12RootSignature>  rootSignature;
+	std::vector<D3D12_ROOT_PARAMETER> parameter;
 };
 

@@ -37,6 +37,7 @@ RootSignature::SetTableRange(int paramNum, D3D12_DESCRIPTOR_RANGE_TYPE type, int
 	descTblRange.RangeType = type;
 	descTblRange.NumDescriptors = 1;
 	descTblRange.BaseShaderRegister = baseNum;
+	descTblRange.RegisterSpace = 0;
 	descTblRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 	ranges[paramNum].push_back(descTblRange);
@@ -77,13 +78,13 @@ RootSignature::CreateRootSignature(ID3D12Device* dev) {
 		&error
 	);
 
-
 	result = dev->CreateRootSignature(
 		0,
 		signature->GetBufferPointer(),
 		signature->GetBufferSize(),
 		IID_PPV_ARGS(rootSignature.GetAddressOf())
 	);
+
 }
 std::vector<D3D12_ROOT_PARAMETER>&
 RootSignature::GetParameter() {

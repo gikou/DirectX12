@@ -1,6 +1,8 @@
 #pragma once
-#include<DirectXMath.h>
+#include"AbeMath.h"
+#include<string>
 using namespace DirectX;
+class ID3D12Device;
 class ID3D12GraphicsCommandList;
 class ID3D12Resource;
 
@@ -41,12 +43,13 @@ struct PrimitiveVertex {
 class PrimitiveMesh
 {
 protected:
-
-
 public:
 	PrimitiveMesh();
 	virtual ~PrimitiveMesh();
-	virtual ID3D12Resource* VertexBuffer() = 0;
+	virtual ID3D12Resource* VertexBuffer(ID3D12Device* dev) = 0;
+	virtual void SetTexture(std::string texturePath) = 0;
+	virtual void SetPosition(DirectX::XMFLOAT3 position) = 0;
+	virtual void Update() = 0;
 	virtual void Draw(ID3D12GraphicsCommandList* cmdlist) = 0;
 };
 
