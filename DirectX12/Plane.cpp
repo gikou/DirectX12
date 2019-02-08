@@ -4,12 +4,12 @@
 
 #pragma comment(lib,"d3d12.lib")
 
-Plane::Plane(ID3D12Device* dev,float width, float depth, float nx, float ny, float nz):device(dev)
+Plane::Plane(ID3D12Device* dev,XMFLOAT3& pos, float width, float depth, XMFLOAT3& normal, XMFLOAT3& color):device(dev)
 {	
-	vertices.push_back(PrimitiveVertex(XMFLOAT3(-50.f, -0.2f, 50.f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(1.0f,1.0f,1.0f), XMFLOAT2(0.0f, 0.0f)));
-	vertices.push_back(PrimitiveVertex(XMFLOAT3(50.f, -0.2f, 50.f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 0.0f)));
-	vertices.push_back(PrimitiveVertex(XMFLOAT3(-50.f, -0.2f, -50.f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f)));
-	vertices.push_back(PrimitiveVertex(XMFLOAT3(50.f, -0.2f, -50.f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f)));
+	vertices.push_back(PrimitiveVertex(XMFLOAT3(pos.x - (width / 2), pos.y, pos.z + (depth/2)), XMFLOAT3(normal.x, normal.y, normal.z), XMFLOAT3(color.x,color.y,color.z), XMFLOAT2(0.0f, 0.0f)));
+	vertices.push_back(PrimitiveVertex(XMFLOAT3(pos.x + (width / 2), pos.y, pos.z + (depth / 2)), XMFLOAT3(normal.x, normal.y, normal.z), XMFLOAT3(color.x, color.y, color.z), XMFLOAT2(1.0f, 0.0f)));
+	vertices.push_back(PrimitiveVertex(XMFLOAT3(pos.x - (width / 2), pos.y, pos.z - (depth / 2)), XMFLOAT3(normal.x, normal.y, normal.z), XMFLOAT3(color.x, color.y, color.z), XMFLOAT2(0.0f, 1.0f)));
+	vertices.push_back(PrimitiveVertex(XMFLOAT3(pos.x + (width / 2), pos.y, pos.z - (depth / 2)), XMFLOAT3(normal.x, normal.y, normal.z), XMFLOAT3(color.x, color.y, color.z), XMFLOAT2(1.0f, 1.0f)));
 }
 
 

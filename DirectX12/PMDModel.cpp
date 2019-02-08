@@ -89,13 +89,14 @@ PMDModel::ModelLoader() {
 	unsigned short iknum = 0;
 	fread(&iknum, sizeof(unsigned short), 1, modelfp);
 
-	std::vector<IKData> ikIndices(iknum);
-	for (auto& index : ikIndices) {
+	ikData.resize(iknum);
+	for (auto& index : ikData) {
 		fread(&index.boneIndex, sizeof(unsigned short), 1, modelfp);
 		fread(&index.targetBoneIndex, sizeof(unsigned short), 1, modelfp);
 		fread(&index.length, sizeof(unsigned char), 1, modelfp);
 		fread(&index.iterationNum, sizeof(unsigned short), 1, modelfp);
 		fread(&index.restriction, sizeof(float), 1, modelfp);
+		index.childBoneIndex.resize(index.length);
 		fread(&index.childBoneIndex[0], sizeof(unsigned short), index.length, modelfp);
 	}
 	//Х\По 
@@ -176,6 +177,13 @@ std::vector<PMDBone>
 PMDModel::GetBones() {
 	return bones;
 }
+
+std::vector<IKData> PMDModel::GetIKData()
+{
+	return ikData;
+}
+
+
 
 std::string 
 PMDModel::GetModelFolder() {

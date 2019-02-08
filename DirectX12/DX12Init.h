@@ -16,10 +16,11 @@ class Dx12BufferManager;
 class PMDModel;
 class PMXModel;
 class LoadMotion;
-class CreateRootSignature;
+class RootSignature;
 class PrimitiveCreator;
 
 class RootSignature;
+class PiplineState;
 
 //ワールドビュープロジェクトの構造体
 struct BaseMatrixes {
@@ -51,8 +52,8 @@ private:
 	
 
 	std::shared_ptr<PrimitiveCreator> primitive;
-	std::shared_ptr<CreateRootSignature> rootsignater;
-	
+	std::map<std::string, std::shared_ptr<RootSignature>> rootsignater;
+	std::map<std::string, std::shared_ptr<PiplineState>> piplineStates;
 	Material* mapped;
 
 	unsigned char* pData;
@@ -72,7 +73,6 @@ private:
 	ComPtr<ID3D12RootSignature> rootSignature;
 	ComPtr<ID3D12PipelineState> pipelineState;
 
-	std::map<std::string, RootSignature> rootSignatures;
 
 
 	//WVP用
@@ -179,6 +179,7 @@ private:
 	void ResourceBarrier(std::vector<ID3D12Resource*> recource, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 	void Wait();
 	void SetViewAndScissor(unsigned int bbindex, ID3D12DescriptorHeap* heap);
+	void CCDIK();
 	void RecursiveMatrixMultiply(BoneNode& node, DirectX::XMMATRIX& inMat);
 	void BendBone(const char* name, DirectX::XMFLOAT4& q,DirectX::XMFLOAT3& loc, const DirectX::XMFLOAT4& q2, float t);
 	void MotionUpdate(int frameNo);

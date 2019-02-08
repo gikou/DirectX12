@@ -8,7 +8,7 @@ class ID3D12Resource;
 class ID3D12GraphicsCommandList;
 //struct D3D12_VERTEX_BUFFER_VIEW;
 
-class Plane :
+class Cylinder :
 	public PrimitiveMesh
 {
 private:
@@ -18,8 +18,8 @@ private:
 	PrimitiveVertex* mapDate;
 	D3D12_VERTEX_BUFFER_VIEW vbView;
 public:
-	Plane(ID3D12Device* dev, XMFLOAT3& pos, float width, float depth, XMFLOAT3& normal, XMFLOAT3& color);
-	~Plane();
+	Cylinder(ID3D12Device* dev,float radius, float h, unsigned short div);
+	~Cylinder();
 	ID3D12Resource* VertexBuffer();
 	void Draw(ID3D12GraphicsCommandList* cmdlist);
 };

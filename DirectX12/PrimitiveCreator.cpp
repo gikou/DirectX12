@@ -14,7 +14,7 @@
 
 PrimitiveCreator::PrimitiveCreator(ID3D12Device* dev):device(dev)
 {
-	plane.reset(new Plane(device,0.0f,0.0f,0.0f,0.0f,0.0f));
+	plane.reset(new Plane(device,XMFLOAT3(0.0f,0.0f,0.0f),100.0f,100.0f,XMFLOAT3(0.0f,1.0f,0.0f),XMFLOAT3(1.0f,1.0f,1.0f)));
 	cube.reset(new Cube(device, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f));
 	cylinder.reset(new Cylinder(device,15.0f,20.0f,20));
 }

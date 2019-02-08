@@ -10,7 +10,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	WNDCLASSEX w = {};
 	w.cbSize = sizeof(WNDCLASSEX);
 	w.lpfnWndProc = (WNDPROC)WindowProcedure;//コールバック関数の指定
-	w.lpszClassName = _T("DirectX12");//アプリケーションクラス名
+	w.lpszClassName = _T("1601262_阿部巧");//アプリケーションクラス名
 	w.hInstance = GetModuleHandle(0);//ハンドルの取得
 	RegisterClassEx(&w);//アプリケーションクラス
 
@@ -20,7 +20,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//ウィンドウ生成
 	HWND hwnd = CreateWindow(w.lpszClassName,//クラス名指定
-		_T("DirectX12"),			//タイトルバーの文字
+		_T("1601262_阿部巧"),			//タイトルバーの文字
 		WS_OVERLAPPEDWINDOW,		//タイトルバーと境界線があるウィンドウ
 		CW_USEDEFAULT,			//表示X座標はOSにお任せ
 		CW_USEDEFAULT,			//表示Y座標はOSにお任せ

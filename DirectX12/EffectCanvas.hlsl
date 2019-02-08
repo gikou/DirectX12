@@ -89,16 +89,16 @@ float4 EffectPS(Output input) : SV_Target
     //b = pow(b, 4);
     //return float4(b, b, b, 1);
     
-    //float2 offsetx = float2(14 / input.size.x, 0);
-    //float4 ret = tex.Sample(smp, input.uv);
-    //ret = ret * wgts[0].x;
-    //ret += wgts[0].y * (tex.Sample(smp, input.uv1) + tex.Sample(smp, input.uv7 + offsetx));
-    //ret += wgts[0].z * (tex.Sample(smp, input.uv2) + tex.Sample(smp, input.uv6 + offsetx));
-    //ret += wgts[0].w * (tex.Sample(smp, input.uv3) + tex.Sample(smp, input.uv5 + offsetx));
-    //ret += wgts[1].x * (tex.Sample(smp, input.uv4) + tex.Sample(smp, input.uv4 + offsetx));
-    //ret += wgts[1].y * (tex.Sample(smp, input.uv5) + tex.Sample(smp, input.uv3 + offsetx));
-    //ret += wgts[1].z * (tex.Sample(smp, input.uv6) + tex.Sample(smp, input.uv2 + offsetx));
-    //ret += wgts[1].w * (tex.Sample(smp, input.uv7) + tex.Sample(smp, input.uv1 + offsetx));
+    float2 offsetx = float2(14 / input.size.x, 0);
+    float4 ret = tex.Sample(smp, input.uv);
+    ret = ret * wgts[0].x;
+    ret += wgts[0].y * (tex.Sample(smp, input.uv1) + tex.Sample(smp, input.uv7 + offsetx));
+    ret += wgts[0].z * (tex.Sample(smp, input.uv2) + tex.Sample(smp, input.uv6 + offsetx));
+    ret += wgts[0].w * (tex.Sample(smp, input.uv3) + tex.Sample(smp, input.uv5 + offsetx));
+    ret += wgts[1].x * (tex.Sample(smp, input.uv4) + tex.Sample(smp, input.uv4 + offsetx));
+    ret += wgts[1].y * (tex.Sample(smp, input.uv5) + tex.Sample(smp, input.uv3 + offsetx));
+    ret += wgts[1].z * (tex.Sample(smp, input.uv6) + tex.Sample(smp, input.uv2 + offsetx));
+    ret += wgts[1].w * (tex.Sample(smp, input.uv7) + tex.Sample(smp, input.uv1 + offsetx));
 
     //return ret;
     return tex.Sample(smp, input.uv);
@@ -106,8 +106,12 @@ float4 EffectPS(Output input) : SV_Target
     float ry = (input.uv.y - 0.5f) * 9 / 16;
     if (rx * rx + ry * ry > 0.04f)
     {
-        return tex.Sample(smp, input.uv);
+        return ret;
     }
+    //else
+    //{
+    //    return ret;
+    //}
     
     float4 nm = normal.Sample(smp, input.uv);
     float2 offset = (nm.rg - float2(0.5f, 0.5)) * float2(2, -2) * 0.06f;

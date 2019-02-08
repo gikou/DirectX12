@@ -44,16 +44,16 @@ Output EffectVS(float4 pos : POSITION, float2 uv : TEXCOORD)
 float4 EffectPS(Output input) : SV_Target
 {
   
-    //float2 offsety = float2(0, 14 / input.size.y);
-    //float4 ret = tex.Sample(smp, input.uv);
-    //ret = ret * wgts[0].x;
-    //ret += wgts[0].y * (tex.Sample(smp, input.uv1) + tex.Sample(smp, input.uv7 + offsety));
-    //ret += wgts[0].z * (tex.Sample(smp, input.uv2) + tex.Sample(smp, input.uv6 + offsety));
-    //ret += wgts[0].w * (tex.Sample(smp, input.uv3) + tex.Sample(smp, input.uv5 + offsety));
-    //ret += wgts[1].x * (tex.Sample(smp, input.uv4) + tex.Sample(smp, input.uv4 + offsety));
-    //ret += wgts[1].y * (tex.Sample(smp, input.uv5) + tex.Sample(smp, input.uv3 + offsety));
-    //ret += wgts[1].z * (tex.Sample(smp, input.uv6) + tex.Sample(smp, input.uv2 + offsety));
-    //ret += wgts[1].w * (tex.Sample(smp, input.uv7) + tex.Sample(smp, input.uv1 + offsety));
+    float2 offsety = float2(0, 14 / input.size.y);
+    float4 ret = tex.Sample(smp, input.uv);
+    ret = ret * wgts[0].x;
+    ret += wgts[0].y * (tex.Sample(smp, input.uv1) + tex.Sample(smp, input.uv7 + offsety));
+    ret += wgts[0].z * (tex.Sample(smp, input.uv2) + tex.Sample(smp, input.uv6 + offsety));
+    ret += wgts[0].w * (tex.Sample(smp, input.uv3) + tex.Sample(smp, input.uv5 + offsety));
+    ret += wgts[1].x * (tex.Sample(smp, input.uv4) + tex.Sample(smp, input.uv4 + offsety));
+    ret += wgts[1].y * (tex.Sample(smp, input.uv5) + tex.Sample(smp, input.uv3 + offsety));
+    ret += wgts[1].z * (tex.Sample(smp, input.uv6) + tex.Sample(smp, input.uv2 + offsety));
+    ret += wgts[1].w * (tex.Sample(smp, input.uv7) + tex.Sample(smp, input.uv1 + offsety));
 
     //return ret;
 

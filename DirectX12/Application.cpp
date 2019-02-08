@@ -47,12 +47,12 @@ Application::Run(HWND hwnd) {
 	debug = nullptr;
 #endif
 
-	ID3D12Device* device = nullptr;
+	
 	std::shared_ptr<DX12Init> dx12;
 	dx12.reset(new DX12Init());
-	dx12->Dx12SetInit(hwnd, device);
+	dx12->Dx12SetInit(hwnd, nullptr);
 	dx12->Initialize();
-	device = dx12->GetDevice();
+	//device = dx12->GetDevice();
 	//ƒ‹[ƒv
 	MSG msg = {};
 	while (msg.message != WM_QUIT) {
@@ -63,10 +63,10 @@ Application::Run(HWND hwnd) {
 		dx12->Draw();
 	}
 	dx12.reset();
-	ID3D12DebugDevice* debugInterface = nullptr;
+	/*ID3D12DebugDevice* debugInterface = nullptr;
 	result = device->QueryInterface(&debugInterface);
 	debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
-	Release(debugInterface);
+	Release(debugInterface);*/
 
 	return true;
 }

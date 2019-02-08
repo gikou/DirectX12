@@ -1,5 +1,6 @@
 #pragma once
 #include<DirectXMath.h>
+#include<string>
 using namespace DirectX;
 class ID3D12GraphicsCommandList;
 class ID3D12Resource;
@@ -41,12 +42,11 @@ struct PrimitiveVertex {
 class PrimitiveMesh
 {
 protected:
-
-
 public:
 	PrimitiveMesh();
 	virtual ~PrimitiveMesh();
 	virtual ID3D12Resource* VertexBuffer() = 0;
+	virtual SetTexture(std::string texturePath) = 0;
 	virtual void Draw(ID3D12GraphicsCommandList* cmdlist) = 0;
 };
 
